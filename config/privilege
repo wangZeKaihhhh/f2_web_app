@@ -1,0 +1,7 @@
+{
+    "defaults": {
+        "run-as": "package"
+    },
+    "username": "docker-f2-downloader",
+    "groupname": "docker-f2-downloader"
+}

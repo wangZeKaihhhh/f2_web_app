@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+# Reserved for upgrade hooks.
+exit 0

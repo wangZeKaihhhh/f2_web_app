@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+# Reserved for post-config-update callback.
+exit 0

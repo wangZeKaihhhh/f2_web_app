@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+# Reserved for post-install callback.
+exit 0

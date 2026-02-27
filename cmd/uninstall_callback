@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+# Reserved for post-uninstall callback.
+exit 0

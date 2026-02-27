@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+APPDIR="$(cd "$(dirname "$0")/.." && pwd)"
+mkdir -p "$APPDIR/var/config" "$APPDIR/var/state" "$APPDIR/var/downloads"
+exit 0

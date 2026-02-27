@@ -1,0 +1,14 @@
+f2_web_fpk
+
+This product includes software and code paths derived from:
+- f2 (https://github.com/Johnserf-Seed/f2)
+
+The upstream f2 project is licensed under the Apache License, Version 2.0.
+
+Modifications in this repository include (non-exhaustive):
+- Web backend service integration (FastAPI)
+- Frontend dashboard implementation (React + Vite)
+- FPK packaging integration for fnOS
+- Runtime security hardening (authentication, storage protection, path policy)
+
+Copyright (c) 2026 wangzekai and contributors.

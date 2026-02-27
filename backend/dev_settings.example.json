@@ -1,0 +1,21 @@
+{
+  "user_list": [],
+  "douyin_cookie": "",
+  "max_tasks": 3,
+  "page_counts": 20,
+  "max_counts": null,
+  "timeout": 10,
+  "max_retries": 5,
+  "max_connections": 5,
+  "mode": "post",
+  "music": false,
+  "cover": false,
+  "desc": false,
+  "folderize": false,
+  "naming": "{create}_{desc}",
+  "interval": "all",
+  "update_exif": true,
+  "incremental_mode": true,
+  "incremental_threshold": 20,
+  "download_path": "./.runtime/downloads"
+}

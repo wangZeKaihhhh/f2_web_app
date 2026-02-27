@@ -1,0 +1,22 @@
+{
+    "docker-project": {
+        "projects": [
+            {
+                "name": "f2-downloader",
+                "path": "docker"
+            }
+        ]
+    },
+    "data-share": {
+        "shares": [
+            {
+                "name": "downloads",
+                "permission": {
+                    "rw": [
+                        "docker-f2-downloader"
+                    ]
+                }
+            }
+        ]
+    }
+}

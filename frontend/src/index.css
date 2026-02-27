@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink-rgb: 28 33 40;
+  --paper-rgb: 245 247 250;
+  --pine-rgb: 10 132 255;
+  --ember-rgb: 255 69 58;
+  --slate-rgb: 103 113 126;
+  --shadow-rgb: 15 23 42;
+  --page-bg: linear-gradient(180deg, rgb(245 247 250), rgb(239 242 247));
+  color: rgb(var(--ink-rgb));
+  background: rgb(var(--paper-rgb));
+}
+
+[data-theme='classic'] {
+  --ink-rgb: 15 20 18;
+  --paper-rgb: 242 240 232;
+  --pine-rgb: 31 111 80;
+  --ember-rgb: 207 75 31;
+  --slate-rgb: 42 52 48;
+  --shadow-rgb: 15 20 18;
+  --page-bg:
+    radial-gradient(1300px 620px at -10% -20%, rgb(31 111 80 / 0.23), transparent 58%),
+    radial-gradient(1100px 580px at 120% 0%, rgb(207 75 31 / 0.2), transparent 62%),
+    rgb(242 240 232);
+}
+
+[data-theme='apple-light'] {
+  --ink-rgb: 28 33 40;
+  --paper-rgb: 245 247 250;
+  --pine-rgb: 10 132 255;
+  --ember-rgb: 255 69 58;
+  --slate-rgb: 103 113 126;
+  --shadow-rgb: 15 23 42;
+  --page-bg:
+    radial-gradient(1200px 760px at -15% -18%, rgb(180 208 255 / 0.48), transparent 58%),
+    radial-gradient(980px 660px at 108% 2%, rgb(166 226 255 / 0.34), transparent 62%),
+    radial-gradient(880px 620px at 52% 120%, rgb(203 212 225 / 0.3), transparent 58%),
+    linear-gradient(180deg, rgb(245 247 250), rgb(238 242 247));
+}
+
+[data-theme='apple-dark'] {
+  --ink-rgb: 239 243 248;
+  --paper-rgb: 29 31 35;
+  --pine-rgb: 10 132 255;
+  --ember-rgb: 255 69 58;
+  --slate-rgb: 157 165 176;
+  --shadow-rgb: 0 0 0;
+  --page-bg:
+    radial-gradient(1100px 760px at -16% -20%, rgb(69 92 135 / 0.4), transparent 60%),
+    radial-gradient(920px 640px at 108% 6%, rgb(45 116 170 / 0.26), transparent 64%),
+    linear-gradient(180deg, rgb(26 28 33), rgb(20 22 26));
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family:
+    'SF Pro Text',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Helvetica Neue',
+    'Noto Sans SC',
+    sans-serif;
+  color: rgb(var(--ink-rgb));
+  background: var(--page-bg);
+  background-attachment: fixed;
+  transition:
+    color 0.25s ease,
+    background-color 0.25s ease,
+    background-image 0.25s ease;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@layer components {
+  .surface-card {
+    @apply border border-slate/25 bg-paper/85 shadow-card backdrop-blur-md;
+  }
+
+  .surface-soft {
+    @apply border border-slate/20 bg-paper/70 backdrop-blur-md;
+  }
+
+  .surface-muted {
+    @apply border border-slate/15 bg-paper/55 backdrop-blur-md;
+  }
+
+  .surface-log {
+    @apply border border-slate/35 bg-ink text-paper;
+  }
+}
+
+[data-theme^='apple-'] .surface-card {
+  border-color: rgb(var(--slate-rgb) / 0.2);
+  background:
+    linear-gradient(180deg, rgb(var(--paper-rgb) / 0.78), rgb(var(--paper-rgb) / 0.6));
+  box-shadow:
+    0 20px 40px rgb(var(--shadow-rgb) / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.64);
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+}
+
+[data-theme^='apple-'] .surface-soft {
+  border-color: rgb(var(--slate-rgb) / 0.18);
+  background:
+    linear-gradient(180deg, rgb(var(--paper-rgb) / 0.66), rgb(var(--paper-rgb) / 0.5));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.52);
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
+}
+
+[data-theme^='apple-'] .surface-muted {
+  border-color: rgb(var(--slate-rgb) / 0.16);
+  background:
+    linear-gradient(180deg, rgb(var(--paper-rgb) / 0.56), rgb(var(--paper-rgb) / 0.42));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.44);
+  backdrop-filter: blur(16px) saturate(146%);
+  -webkit-backdrop-filter: blur(16px) saturate(146%);
+}
+
+[data-theme^='apple-'] .surface-log {
+  border-color: rgb(var(--slate-rgb) / 0.45);
+  background: linear-gradient(160deg, rgb(var(--ink-rgb) / 0.9), rgb(var(--ink-rgb) / 0.78));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2);
+}
+
+[data-theme='apple-dark'] .surface-card {
+  border-color: rgb(255 255 255 / 0.12);
+  background:
+    linear-gradient(180deg, rgb(var(--paper-rgb) / 0.56), rgb(var(--paper-rgb) / 0.4));
+  box-shadow:
+    0 22px 44px rgb(0 0 0 / 0.42),
+    inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+
+[data-theme='apple-dark'] .surface-soft {
+  border-color: rgb(255 255 255 / 0.1);
+  background:
+    linear-gradient(180deg, rgb(var(--paper-rgb) / 0.5), rgb(var(--paper-rgb) / 0.34));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+[data-theme='apple-dark'] .surface-muted {
+  border-color: rgb(255 255 255 / 0.08);
+  background:
+    linear-gradient(180deg, rgb(var(--paper-rgb) / 0.4), rgb(var(--paper-rgb) / 0.28));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+[data-theme='apple-dark'] .surface-log {
+  border-color: rgb(255 255 255 / 0.16);
+  background: linear-gradient(160deg, rgb(14 16 20 / 0.92), rgb(24 28 34 / 0.88));
+}
+
+[data-theme='apple-dark'] body {
+  color-scheme: dark;
+}

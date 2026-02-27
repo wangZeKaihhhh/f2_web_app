@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+# Reserved for pre-upgrade hook.
+exit 0

@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+# Reserved for pre-config-update hook.
+exit 0
