@@ -1,6 +1,6 @@
 # f2_web_fpk
 
-核心爬虫能力引用自 [`f2`](https://github.com/Johnserf-Seed/f2)，并提供 Web 管理界面与飞牛 FPK 打包支持。
+面向飞牛 fnOS 的抖音数据采集与备份工具，核心爬虫能力引用自 [`f2`](https://github.com/Johnserf-Seed/f2)，并提供 Web 管理界面与飞牛 FPK 打包支持。
 
 ## 免责声明
 
