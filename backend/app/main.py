@@ -81,7 +81,7 @@ def _get_client_identity(request: Request) -> str:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="F2 Downloader Web", version="0.1.0")
+    app = FastAPI(title="F2 Web App", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

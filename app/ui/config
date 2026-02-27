@@ -1,7 +1,7 @@
 {
     ".url": {
-        "App.Native.f2-downloader.Application": {
-            "title": "F2 Downloader",
+        "App.Native.f2-web-app.Application": {
+            "title": "F2 Web App",
             "icon": "images/icon_{0}.png",
             "type": "url",
             "protocol": "",

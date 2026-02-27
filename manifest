@@ -1,6 +1,6 @@
-appname               = App.Native.f2-downloader
+appname               = App.Native.f2-web-app
 version               = 0.1.0
-display_name          = F2 Downloader
+display_name          = F2 Web App
 desc                  = Web-based Douyin crawler dashboard powered by FastAPI and React.
 arch                  = x86_64
 service_port          = 18080
@@ -8,4 +8,4 @@ source                = thirdparty
 maintainer            = wangzekai
 distributor           = wangzekai
 desktop_uidir         = ui
-desktop_applaunchname = App.Native.f2-downloader.Application
+desktop_applaunchname = App.Native.f2-web-app.Application

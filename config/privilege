@@ -2,6 +2,6 @@
     "defaults": {
         "run-as": "package"
     },
-    "username": "docker-f2-downloader",
-    "groupname": "docker-f2-downloader"
+    "username": "docker-f2-web-app",
+    "groupname": "docker-f2-web-app"
 }

@@ -2,11 +2,11 @@ version: "3.8"
 
 services:
   webapp:
-    container_name: app-native-f2-downloader
+    container_name: app-native-f2-web-app
     build:
       context: .
       dockerfile: Dockerfile
-    image: app-native-f2-downloader:0.1.0
+    image: app-native-f2-web-app:0.1.0
     environment:
       - TZ=${TZ:-Asia/Shanghai}
       - APP_ENV=package
