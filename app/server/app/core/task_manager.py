@@ -340,6 +340,7 @@ class TaskManager:
             started_at=record.started_at,
             ended_at=record.ended_at,
             error=record.error,
+            result=record.result,
         )
 
     @staticmethod
