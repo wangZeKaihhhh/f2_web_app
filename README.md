@@ -34,9 +34,9 @@
   - `STATE_DIR=backend/.runtime/state`
   - `DOWNLOAD_PATH=backend/.runtime/downloads`
 - 打包运行（`APP_ENV=package`）
-  - `SETTINGS_FILE=/data/config/settings.json`
-  - `STATE_DIR=/data/state`
-  - `DOWNLOAD_PATH=/data/downloads`
+  - `SETTINGS_FILE=${TRIM_PKGVAR}/config/settings.json`
+  - `STATE_DIR=${TRIM_PKGVAR}/state`
+  - `DOWNLOAD_PATH=${TRIM_DATA_SHARE_PATHS}`（未配置时回退到 `${TRIM_PKGVAR}/downloads`）
 
 参考模板：
 
@@ -77,7 +77,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 脚本会执行：
 
 1. 构建 frontend dist
-2. 同步 backend + dist 到 `app/docker/context`
+2. 同步 backend + dist 到 `app/server` 与 `app/frontend_dist`
 3. 运行 `fnpack build`
 
 ## 安全与运维
@@ -90,7 +90,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 可配置环境变量：
 
-- `APP_PASSWORD`：可选，容器首次启动时预置密码
+- `APP_PASSWORD`：可选，应用首次启动时预置密码
 - `AUTH_TOKEN_TTL`：Token 有效期（秒）
 - `AUTH_LOGIN_MAX_ATTEMPTS`：窗口内最大失败次数（默认 6）
 - `AUTH_LOGIN_WINDOW_SECONDS`：统计窗口（默认 300 秒）
@@ -100,14 +100,14 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 当前版本无“找回密码”接口。可通过重置认证文件恢复：
 
-1. 停止应用容器
-2. 删除 `/data/config/auth.json`
+1. 停止应用服务
+2. 删除 `${TRIM_PKGVAR}/config/auth.json`
 3. 重启应用
 4. 重新设置访问密码
 
 ### 下载目录限制（fnOS 打包环境）
 
-在 `APP_ENV=package` 时，下载目录会被限制在 NAS 授权目录范围内。后端会根据飞牛注入的共享路径变量进行校验，超范围目录会被拒绝。
+在 `APP_ENV=package` 时，下载目录支持用户自定义绝对路径。后端会在保存设置和任务启动前执行“创建目录 + 写入探针文件”检查；如果无写权限会返回明确错误信息。
 
 ## 许可证
 

@@ -1,4 +1,5 @@
 #!/bin/bash
-set -e
-# Reserved for pre-upgrade hook.
+set -euo pipefail
+
+# Keep pre-upgrade hook minimal.
 exit 0

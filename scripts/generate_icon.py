@@ -128,11 +128,9 @@ def _write_icons(base: Image.Image) -> None:
         256: [
             ROOT / "ICON_256.PNG",
             ROOT / "app" / "ui" / "images" / "icon_256.png",
-            ROOT / "app" / "ui" / "images" / "icon-256.png",
         ],
         64: [
             ROOT / "app" / "ui" / "images" / "icon_64.png",
-            ROOT / "app" / "ui" / "images" / "icon-64.png",
         ],
     }
 

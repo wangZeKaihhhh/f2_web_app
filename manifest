@@ -5,6 +5,7 @@ desc                  = Web-based Douyin crawler dashboard powered by FastAPI an
 arch                  = x86_64
 service_port          = 18080
 source                = thirdparty
+install_dep_apps      = python312
 maintainer            = wangzekai
 distributor           = wangzekai
 desktop_uidir         = ui

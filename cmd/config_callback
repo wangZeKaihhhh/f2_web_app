@@ -1,4 +1,22 @@
 #!/bin/bash
-set -e
-# Reserved for post-config-update callback.
+set -euo pipefail
+
+if [ -z "${TRIM_PKGVAR:-}" ]; then
+    exit 0
+fi
+
+PATHS_FILE="${TRIM_PKGVAR}/accessible_paths.txt"
+mkdir -p "$(dirname "${PATHS_FILE}")"
+
+MERGED_PATHS="${TRIM_DATA_ACCESSIBLE_PATHS:-}"
+if [ -n "${TRIM_DATA_SHARE_PATHS:-}" ]; then
+    if [ -n "${MERGED_PATHS}" ]; then
+        MERGED_PATHS="${MERGED_PATHS}:${TRIM_DATA_SHARE_PATHS}"
+    else
+        MERGED_PATHS="${TRIM_DATA_SHARE_PATHS}"
+    fi
+fi
+
+printf '%s\n' "${MERGED_PATHS}" > "${PATHS_FILE}"
+
 exit 0

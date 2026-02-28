@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import loginHintIcon from '../assets/login-hint-icon.svg';
@@ -53,7 +54,9 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
-      setAuthMessage(`认证初始化失败: ${errorMessage(error)}`);
+      const text = `认证初始化失败: ${errorMessage(error)}`;
+      setAuthMessage(text);
+      toast.error(text);
       clearAuthToken();
     } finally {
       setAuthReady(true);
@@ -62,7 +65,9 @@ export default function LoginPage() {
 
   async function onSetupPassword() {
     if (authPassword !== authPasswordConfirm) {
-      setAuthMessage('两次输入的密码不一致');
+      const text = '两次输入的密码不一致';
+      setAuthMessage(text);
+      toast.error(text);
       return;
     }
 
@@ -75,7 +80,9 @@ export default function LoginPage() {
       setAuthPasswordConfirm('');
       await navigate({ to: '/' });
     } catch (error) {
-      setAuthMessage(`设置失败: ${errorMessage(error)}`);
+      const text = `设置失败: ${errorMessage(error)}`;
+      setAuthMessage(text);
+      toast.error(text);
     } finally {
       setAuthSubmitting(false);
     }
@@ -90,7 +97,9 @@ export default function LoginPage() {
       setAuthPassword('');
       await navigate({ to: '/' });
     } catch (error) {
-      setAuthMessage(`登录失败: ${errorMessage(error)}`);
+      const text = `登录失败: ${errorMessage(error)}`;
+      setAuthMessage(text);
+      toast.error(text);
     } finally {
       setAuthSubmitting(false);
     }

@@ -1,4 +1,32 @@
 #!/bin/bash
-set -e
-# Reserved for post-upgrade callback.
+set -euo pipefail
+
+export PATH="/var/apps/python312/target/bin:${PATH}"
+
+LOG_FILE="${TRIM_TEMP_LOGFILE:-/tmp/f2_web_app_upgrade.log}"
+exec >> "${LOG_FILE}" 2>&1
+
+SERVER_DIR="${TRIM_APPDEST}/server"
+REQ_FILE="${SERVER_DIR}/requirements.txt"
+VENV_DIR="${TRIM_PKGVAR}/.venv"
+
+if [ ! -f "${REQ_FILE}" ]; then
+    echo "requirements.txt not found: ${REQ_FILE}"
+    exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 not found. Please ensure install_dep_apps=python312 is installed."
+    exit 1
+fi
+
+mkdir -p "${TRIM_PKGVAR}/config" "${TRIM_PKGVAR}/state" "${TRIM_PKGVAR}/downloads"
+
+if [ ! -d "${VENV_DIR}" ]; then
+    python3 -m venv "${VENV_DIR}"
+fi
+
+"${VENV_DIR}/bin/python3" -m pip install --upgrade pip
+"${VENV_DIR}/bin/pip" install --no-cache-dir -r "${REQ_FILE}"
+
 exit 0

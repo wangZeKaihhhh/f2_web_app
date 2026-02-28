@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime
 from typing import Any, Literal
 
@@ -8,6 +9,9 @@ from pydantic import BaseModel, Field, model_validator
 
 
 TaskStatus = Literal["pending", "running", "success", "failed", "cancelled"]
+ALLOWED_NAMING_PATTERN = re.compile(
+    r"^\{(?:nickname|create|aweme_id|desc|uid)\}(?:[_-]\{(?:nickname|create|aweme_id|desc|uid)\})*$"
+)
 
 
 def normalize_user_list(raw: Any) -> list[dict[str, str]]:
@@ -61,6 +65,9 @@ class DownloaderSettings(BaseModel):
     incremental_mode: bool = True
     incremental_threshold: int = 20
 
+    proxy_http: str = ""
+    proxy_https: str = ""
+
     download_path: str = Field(
         default_factory=lambda: os.getenv("DOWNLOAD_PATH", "/data/downloads")
     )
@@ -74,6 +81,36 @@ class DownloaderSettings(BaseModel):
         if "user_list" in data:
             data["user_list"] = normalize_user_list(data.get("user_list"))
         return data
+
+    @model_validator(mode="after")
+    def _validate(self) -> DownloaderSettings:
+        self.naming = self._validate_naming(self.naming)
+        self.proxy_http = self._validate_proxy(self.proxy_http, "HTTP")
+        self.proxy_https = self._validate_proxy(self.proxy_https, "HTTPS")
+        return self
+
+    @staticmethod
+    def _validate_naming(raw: str) -> str:
+        value = raw.strip()
+        if not value:
+            raise ValueError("命名模板不能为空")
+
+        if not ALLOWED_NAMING_PATTERN.fullmatch(value):
+            raise ValueError(
+                "命名模板仅支持 {nickname}/{create}/{aweme_id}/{desc}/{uid}，分隔符仅支持 _ 或 -"
+            )
+        return value
+
+    @staticmethod
+    def _validate_proxy(raw: str, protocol_name: str) -> str:
+        value = raw.strip()
+        if not value:
+            return ""
+
+        if value.startswith(("http://", "https://")):
+            return value
+
+        raise ValueError(f"{protocol_name} 代理地址必须以 http:// 或 https:// 开头")
 
 
 class TaskCreateRequest(BaseModel):
@@ -140,6 +177,15 @@ class TaskSummary(BaseModel):
     started_at: datetime | None = None
     ended_at: datetime | None = None
     error: str | None = None
+    result: TaskResult | None = None
+
+
+class TaskListResponse(BaseModel):
+    items: list[TaskSummary] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+    has_more: bool = False
 
 
 class TaskDetail(TaskSummary):

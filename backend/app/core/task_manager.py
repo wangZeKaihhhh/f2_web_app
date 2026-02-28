@@ -142,12 +142,21 @@ class TaskManager:
         record.worker = asyncio.create_task(self._run_task(record), name=f"task-{task_id}")
         return self._to_summary(record)
 
-    async def list_tasks(self) -> list[TaskSummary]:
+    async def list_tasks(
+        self,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[TaskSummary], int]:
+        safe_offset = max(0, offset)
+        safe_limit = max(1, limit)
+
         async with self._lock:
             records = list(self._tasks.values())
 
         records.sort(key=lambda x: x.created_at, reverse=True)
-        return [self._to_summary(record) for record in records]
+        total = len(records)
+        page = records[safe_offset : safe_offset + safe_limit]
+        return [self._to_summary(record) for record in page], total
 
     async def get_task_detail(self, task_id: str) -> TaskDetail:
         record = await self._get_record(task_id)
@@ -331,6 +340,7 @@ class TaskManager:
             started_at=record.started_at,
             ended_at=record.ended_at,
             error=record.error,
+            result=record.result,
         )
 
     @staticmethod

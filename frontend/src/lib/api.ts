@@ -1,4 +1,5 @@
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
+export const DEFAULT_TASK_LIST_LIMIT = 20;
 
 export interface UserTarget {
   name: string;
@@ -24,6 +25,8 @@ export interface DownloaderSettings {
   update_exif: boolean;
   incremental_mode: boolean;
   incremental_threshold: number;
+  proxy_http: string;
+  proxy_https: string;
   download_path: string;
 }
 
@@ -57,12 +60,25 @@ export interface TaskSummary {
   started_at: string | null;
   ended_at: string | null;
   error: string | null;
+  result: TaskResult | null;
+}
+
+export interface TaskListResponse {
+  items: TaskSummary[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+}
+
+export interface ListTasksParams {
+  offset?: number;
+  limit?: number;
 }
 
 export interface TaskDetail extends TaskSummary {
   settings: DownloaderSettings;
   user_list: UserTarget[];
-  result: TaskResult | null;
   logs: LogEntry[];
 }
 
@@ -199,7 +215,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ user_list: userList })
     }),
-  listTasks: () => request<TaskSummary[]>('/api/tasks'),
+  listTasks: (params?: ListTasksParams) => {
+    const search = new URLSearchParams();
+    if (typeof params?.offset === 'number') {
+      search.set('offset', String(params.offset));
+    }
+    if (typeof params?.limit === 'number') {
+      search.set('limit', String(params.limit));
+    }
+    const query = search.toString();
+    return request<TaskListResponse>(`/api/tasks${query ? `?${query}` : ''}`);
+  },
   getTask: (taskId: string) => request<TaskDetail>(`/api/tasks/${taskId}`),
   cancelTask: (taskId: string) =>
     request<TaskSummary>(`/api/tasks/${taskId}/cancel`, {

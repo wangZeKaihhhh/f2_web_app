@@ -21,3 +21,5 @@ app/docker/context/
 
 # macOS
 .DS_Store
+
+.prd

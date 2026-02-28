@@ -11,6 +11,7 @@ import {
   UnauthorizedError,
   api,
   clearAuthToken,
+  DEFAULT_TASK_LIST_LIMIT,
   hasAuthToken,
   type DownloaderSettings,
   type TaskSummary
@@ -44,40 +45,73 @@ const rootRoute = createRootRoute({
   component: () => <Outlet />
 });
 
+const DASHBOARD_PANELS = ['tasks', 'settings'] as const;
+export type DashboardPanel = (typeof DASHBOARD_PANELS)[number];
+
 export type DashboardRouteLoaderData = {
   allowedDownloadRoots: string[];
   settings: DownloaderSettings;
   tasks: TaskSummary[];
+  tasksHasMore: boolean;
+  tasksTotal: number;
 };
 
-const dashboardRoute = createRoute({
+async function loadDashboardData(): Promise<DashboardRouteLoaderData> {
+  const authStatus = await api.getAuthStatus();
+  if (!authStatus.configured) {
+    throw redirect({ to: '/login' });
+  }
+
+  if (!hasAuthToken()) {
+    throw redirect({ to: '/login' });
+  }
+
+  try {
+    const [settings, tasksPage] = await Promise.all([
+      api.getSettings(),
+      api.listTasks({ offset: 0, limit: DEFAULT_TASK_LIST_LIMIT })
+    ]);
+    return {
+      allowedDownloadRoots: authStatus.allowed_download_roots ?? [],
+      settings: normalizeSettings(settings),
+      tasks: tasksPage.items,
+      tasksHasMore: tasksPage.has_more,
+      tasksTotal: tasksPage.total
+    };
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      clearAuthToken();
+      throw redirect({ to: '/login' });
+    }
+    throw error;
+  }
+}
+
+const dashboardIndexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  loader: async (): Promise<DashboardRouteLoaderData> => {
+  beforeLoad: async () => {
     const authStatus = await api.getAuthStatus();
     if (!authStatus.configured) {
       throw redirect({ to: '/login' });
     }
-
     if (!hasAuthToken()) {
       throw redirect({ to: '/login' });
     }
+    throw redirect({ to: '/$panel', params: { panel: 'tasks' } });
+  },
+  component: () => null
+});
 
-    try {
-      const [settings, tasks] = await Promise.all([api.getSettings(), api.listTasks()]);
-      return {
-        allowedDownloadRoots: authStatus.allowed_download_roots ?? [],
-        settings: normalizeSettings(settings),
-        tasks
-      };
-    } catch (error) {
-      if (error instanceof UnauthorizedError) {
-        clearAuthToken();
-        throw redirect({ to: '/login' });
-      }
-      throw error;
+const dashboardPanelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$panel',
+  beforeLoad: ({ params }) => {
+    if (!DASHBOARD_PANELS.includes(params.panel as DashboardPanel)) {
+      throw redirect({ to: '/$panel', params: { panel: 'tasks' } });
     }
   },
+  loader: loadDashboardData,
   component: App
 });
 
@@ -92,13 +126,13 @@ const loginRoute = createRoute({
 
     const valid = await verifyTokenOrClear();
     if (valid) {
-      throw redirect({ to: '/' });
+      throw redirect({ to: '/$panel', params: { panel: 'tasks' } });
     }
   },
   component: LoginPage
 });
 
-const routeTree = rootRoute.addChildren([dashboardRoute, loginRoute]);
+const routeTree = rootRoute.addChildren([dashboardIndexRoute, dashboardPanelRoute, loginRoute]);
 
 export const router = createRouter({ routeTree });
 

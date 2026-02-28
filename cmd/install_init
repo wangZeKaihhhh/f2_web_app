@@ -1,6 +1,6 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-APPDIR="$(cd "$(dirname "$0")/.." && pwd)"
-mkdir -p "$APPDIR/var/config" "$APPDIR/var/state" "$APPDIR/var/downloads"
+# Keep pre-install hook minimal.
+# Runtime data directory under TRIM_PKGVAR may not be ready in install_init stage.
 exit 0

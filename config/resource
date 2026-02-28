@@ -1,12 +1,4 @@
 {
-    "docker-project": {
-        "projects": [
-            {
-                "name": "f2-web-app",
-                "path": "docker"
-            }
-        ]
-    },
     "data-share": {
         "shares": [
             {

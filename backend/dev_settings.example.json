@@ -17,5 +17,7 @@
   "update_exif": true,
   "incremental_mode": true,
   "incremental_threshold": 20,
+  "proxy_http": "",
+  "proxy_https": "",
   "download_path": "./.runtime/downloads"
 }
