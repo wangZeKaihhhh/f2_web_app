@@ -338,17 +338,16 @@ export function TasksPanel() {
     }
   }
 
-  async function onStartTask(userList?: UserTarget[]) {
+  async function onStartTask(userList: UserTarget[]) {
     setStarting(true);
     emitDashboardMeta({ message: "" });
 
     try {
-      const targets = userList ?? startTaskCandidates;
-      if (targets.length === 0) {
+      if (userList.length === 0) {
         throw new Error("用户列表为空");
       }
 
-      const task = await api.createTask(targets);
+      const task = await api.createTask(userList);
       await refreshTasks(1);
       emitDashboardMeta({ message: `任务已创建: ${task.task_id}` });
       toast.success(`任务已创建: ${task.task_id}`);
@@ -547,15 +546,37 @@ export function TasksPanel() {
           </DialogHeader>
 
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Input
-              className="max-w-md"
-              value={startTaskSearch}
-              onChange={(event) => {
-                setStartTaskSearch(event.target.value);
-                setStartTaskPage(1);
-              }}
-              placeholder="搜索名称或 URL / sec_user_id"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                className="max-w-md"
+                value={startTaskSearch}
+                onChange={(event) => {
+                  setStartTaskSearch(event.target.value);
+                  setStartTaskPage(1);
+                }}
+                placeholder="搜索名称或 URL / sec_user_id"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() =>
+                  setSelectedStartUserIndexes(
+                    startTaskCandidates.map((_, index) => index),
+                  )
+                }
+              >
+                全选
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setSelectedStartUserIndexes([])}
+              >
+                清空
+              </Button>
+            </div>
             <p className="font-mono text-xs text-slate">
               已选 {selectedStartUserIndexes.length} / {startTaskCandidates.length}
             </p>
@@ -678,7 +699,9 @@ export function TasksPanel() {
               </Button>
             </DialogClose>
             <Button disabled={starting} onClick={confirmStartTaskWithSelectedUsers}>
-              {starting ? "启动中..." : "确认启动"}
+              {starting
+                ? "启动中..."
+                : `确认启动（${selectedStartUserIndexes.length}）`}
             </Button>
           </DialogFooter>
         </DialogContent>

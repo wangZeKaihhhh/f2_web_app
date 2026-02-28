@@ -315,8 +315,7 @@ def create_app() -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        user_list = payload.user_list if payload.user_list is not None else settings.user_list
-
+        user_list = payload.user_list
         if not user_list:
             raise HTTPException(status_code=400, detail="用户列表为空，请先配置后再启动")
 
