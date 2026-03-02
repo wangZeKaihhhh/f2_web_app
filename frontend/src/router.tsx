@@ -14,6 +14,7 @@ import {
   DEFAULT_TASK_LIST_LIMIT,
   hasAuthToken,
   type DownloaderSettings,
+  type ScheduleSummary,
   type TaskSummary
 } from './lib/api';
 
@@ -45,7 +46,7 @@ const rootRoute = createRootRoute({
   component: () => <Outlet />
 });
 
-const DASHBOARD_PANELS = ['tasks', 'settings'] as const;
+const DASHBOARD_PANELS = ['tasks', 'schedules', 'settings'] as const;
 export type DashboardPanel = (typeof DASHBOARD_PANELS)[number];
 
 export type DashboardRouteLoaderData = {
@@ -54,6 +55,8 @@ export type DashboardRouteLoaderData = {
   tasks: TaskSummary[];
   tasksHasMore: boolean;
   tasksTotal: number;
+  schedules: ScheduleSummary[];
+  schedulesTotal: number;
 };
 
 async function loadDashboardData(): Promise<DashboardRouteLoaderData> {
@@ -67,16 +70,19 @@ async function loadDashboardData(): Promise<DashboardRouteLoaderData> {
   }
 
   try {
-    const [settings, tasksPage] = await Promise.all([
+    const [settings, tasksPage, schedulesResp] = await Promise.all([
       api.getSettings(),
-      api.listTasks({ offset: 0, limit: DEFAULT_TASK_LIST_LIMIT })
+      api.listTasks({ offset: 0, limit: DEFAULT_TASK_LIST_LIMIT }),
+      api.listSchedules()
     ]);
     return {
       allowedDownloadRoots: authStatus.allowed_download_roots ?? [],
       settings: normalizeSettings(settings),
       tasks: tasksPage.items,
       tasksHasMore: tasksPage.has_more,
-      tasksTotal: tasksPage.total
+      tasksTotal: tasksPage.total,
+      schedules: schedulesResp.items,
+      schedulesTotal: schedulesResp.total
     };
   } catch (error) {
     if (error instanceof UnauthorizedError) {

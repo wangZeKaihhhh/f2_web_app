@@ -6,7 +6,7 @@ import {
   type DashboardMetaPatch,
 } from "../../lib/dashboardBus";
 
-type SidebarPanel = "tasks" | "settings";
+type SidebarPanel = "tasks" | "schedules" | "settings";
 const dashboardRouteApi = getRouteApi("/$panel");
 
 export function DashboardSidebar() {
@@ -18,6 +18,7 @@ export function DashboardSidebar() {
   const [tasksTotal, setTasksTotal] = useState(routeData.tasksTotal);
   const [tasksPage, setTasksPage] = useState(1);
   const [userCount, setUserCount] = useState(routeData.settings.user_list.length);
+  const [schedulesTotal, setSchedulesTotal] = useState(routeData.schedulesTotal);
   const [message, setMessage] = useState("");
 
   const tasksTotalPages = Math.max(1, Math.ceil(tasksTotal / DEFAULT_TASK_LIST_LIMIT));
@@ -33,6 +34,9 @@ export function DashboardSidebar() {
       if (typeof patch.userCount === "number") {
         setUserCount(patch.userCount);
       }
+      if (typeof patch.schedulesTotal === "number") {
+        setSchedulesTotal(patch.schedulesTotal);
+      }
       if (typeof patch.message === "string") {
         setMessage(patch.message);
       }
@@ -45,7 +49,7 @@ export function DashboardSidebar() {
 
   return (
     <aside className="z-30 shrink-0 border-b border-slate/25 bg-paper/85 px-3 py-3 backdrop-blur-xl md:h-full md:w-72 md:border-b-0 md:border-r md:px-4 md:py-6">
-      <nav className="grid grid-cols-2 gap-2 md:mt-4 md:block md:space-y-2">
+      <nav className="grid grid-cols-3 gap-2 md:mt-4 md:block md:space-y-2">
         <button
           type="button"
           className={`w-full rounded-xl border px-3 py-2 text-left transition ${
@@ -57,6 +61,18 @@ export function DashboardSidebar() {
         >
           <p className="text-sm font-semibold">任务</p>
           <p className="mt-0.5 font-mono text-[11px] opacity-80">列表、详情与日志</p>
+        </button>
+        <button
+          type="button"
+          className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+            activePanel === "schedules"
+              ? "border-ink bg-ink text-paper"
+              : "surface-soft hover:border-slate/45"
+          }`}
+          onClick={() => onSelectPanel("schedules")}
+        >
+          <p className="text-sm font-semibold">计划</p>
+          <p className="mt-0.5 font-mono text-[11px] opacity-80">定时抓取计划管理</p>
         </button>
         <button
           type="button"
@@ -78,6 +94,7 @@ export function DashboardSidebar() {
           当前页: {tasksPage}/{tasksTotalPages}
         </p>
         <p className="mt-1">用户数量: {userCount}</p>
+        <p className="mt-1">计划数量: {schedulesTotal}</p>
       </div>
 
       {message && <p className="mt-3 hidden font-mono text-xs text-slate md:block">{message}</p>}

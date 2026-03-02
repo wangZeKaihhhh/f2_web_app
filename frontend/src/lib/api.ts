@@ -192,6 +192,38 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export interface ScheduleSummary {
+  schedule_id: string;
+  name: string;
+  enabled: boolean;
+  cron_expr: string;
+  user_list: UserTarget[];
+  created_at: string;
+  updated_at: string;
+  last_run_at: string | null;
+  last_task_id: string | null;
+  next_run_at: string | null;
+}
+
+export interface ScheduleListResponse {
+  items: ScheduleSummary[];
+  total: number;
+}
+
+export interface ScheduleCreatePayload {
+  name: string;
+  cron_expr: string;
+  user_list: UserTarget[];
+  enabled?: boolean;
+}
+
+export interface ScheduleUpdatePayload {
+  name?: string;
+  cron_expr?: string;
+  user_list?: UserTarget[];
+  enabled?: boolean;
+}
+
 export const api = {
   getAuthStatus: () => request<AuthStatus>('/api/auth/status'),
   setupPassword: (password: string) =>
@@ -230,5 +262,24 @@ export const api = {
   cancelTask: (taskId: string) =>
     request<TaskSummary>(`/api/tasks/${taskId}/cancel`, {
       method: 'POST'
-    })
+    }),
+  listSchedules: () => request<ScheduleListResponse>('/api/schedules'),
+  createSchedule: (payload: ScheduleCreatePayload) =>
+    request<ScheduleSummary>('/api/schedules', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  getSchedule: (scheduleId: string) =>
+    request<ScheduleSummary>(`/api/schedules/${scheduleId}`),
+  updateSchedule: (scheduleId: string, payload: ScheduleUpdatePayload) =>
+    request<ScheduleSummary>(`/api/schedules/${scheduleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
+  deleteSchedule: (scheduleId: string) =>
+    request<void>(`/api/schedules/${scheduleId}`, { method: 'DELETE' }),
+  toggleSchedule: (scheduleId: string) =>
+    request<ScheduleSummary>(`/api/schedules/${scheduleId}/toggle`, { method: 'POST' }),
+  runScheduleNow: (scheduleId: string) =>
+    request<{ task_id: string }>(`/api/schedules/${scheduleId}/run`, { method: 'POST' }),
 };

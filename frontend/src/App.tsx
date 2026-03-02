@@ -1,11 +1,12 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { DashboardSidebar } from "./components/layout/DashboardSidebar";
 import { DashboardTopBar } from "./components/layout/DashboardTopBar";
+import { SchedulesPanel } from "./components/panels/SchedulesPanel";
 import { SettingsPanel } from "./components/panels/SettingsPanel";
 import { TasksPanel } from "./components/panels/TasksPanel";
 
 const dashboardRouteApi = getRouteApi("/$panel");
-type SidebarPanel = "tasks" | "settings";
+type SidebarPanel = "tasks" | "schedules" | "settings";
 
 export default function App() {
   const activePanel = dashboardRouteApi.useParams().panel as SidebarPanel;
@@ -27,6 +28,10 @@ export default function App() {
 
             <div className={activePanel === "tasks" ? "block" : "hidden"}>
               <TasksPanel />
+            </div>
+
+            <div className={activePanel === "schedules" ? "block" : "hidden"}>
+              <SchedulesPanel />
             </div>
           </div>
         </main>

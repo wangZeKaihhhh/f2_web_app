@@ -3,6 +3,7 @@ export type DashboardMetaPatch = {
   userCount?: number;
   tasksTotal?: number;
   tasksPage?: number;
+  schedulesTotal?: number;
 };
 
 const DASHBOARD_META_EVENT = "dashboard:meta";

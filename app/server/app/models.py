@@ -193,3 +193,49 @@ class TaskDetail(TaskSummary):
     user_list: list[UserTarget] = Field(default_factory=list)
     result: TaskResult | None = None
     logs: list[LogEntry] = Field(default_factory=list)
+
+
+class ScheduleCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    cron_expr: str = Field(min_length=9, max_length=100)
+    user_list: list[UserTarget] = Field(min_length=1)
+    enabled: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "user_list" in data:
+            data["user_list"] = normalize_user_list(data.get("user_list"))
+        return data
+
+
+class ScheduleUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    cron_expr: str | None = Field(default=None, min_length=9, max_length=100)
+    user_list: list[UserTarget] | None = None
+    enabled: bool | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "user_list" in data and data["user_list"] is not None:
+            data["user_list"] = normalize_user_list(data.get("user_list"))
+        return data
+
+
+class ScheduleSummary(BaseModel):
+    schedule_id: str
+    name: str
+    enabled: bool
+    cron_expr: str
+    user_list: list[UserTarget] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    last_run_at: datetime | None = None
+    last_task_id: str | None = None
+    next_run_at: datetime | None = None
+
+
+class ScheduleListResponse(BaseModel):
+    items: list[ScheduleSummary] = Field(default_factory=list)
+    total: int = 0

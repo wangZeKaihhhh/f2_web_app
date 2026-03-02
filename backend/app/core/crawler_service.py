@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
@@ -271,11 +272,43 @@ class DouyinCrawlerService:
             stats["matched_files"] += 1
 
         stats["time_groups"] = len(grouped_files)
-        for timestamp, paths in grouped_files.items():
-            stats["updated_files"] += cls.update_media_exif_batch(paths, timestamp)
+        max_workers = min(8, os.cpu_count() or 4)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(cls.update_media_exif_batch, paths, ts): ts
+                for ts, paths in grouped_files.items()
+            }
+            for future in as_completed(futures):
+                stats["updated_files"] += future.result()
 
         stats["elapsed_seconds"] = round(perf_counter() - start_time, 2)
         return stats
+
+    async def _exif_worker(
+        self,
+        queue: asyncio.Queue,
+        user_path: Path,
+        emit: EventEmitter,
+        nickname: str,
+    ) -> dict[str, int | float]:
+        accumulated: dict[str, int | float] = {
+            "aweme_items": 0,
+            "files_scanned": 0,
+            "matched_files": 0,
+            "updated_files": 0,
+            "time_groups": 0,
+            "elapsed_seconds": 0.0,
+        }
+        while True:
+            batch = await queue.get()
+            if batch is None:
+                break
+            batch_stats = await asyncio.to_thread(
+                self.process_downloaded_files, user_path, batch
+            )
+            for key in accumulated:
+                accumulated[key] += batch_stats.get(key, 0)
+        return accumulated
 
     async def _download_user_videos(
         self,
@@ -311,7 +344,14 @@ class DouyinCrawlerService:
             video_count = 0
             new_video_count = 0
             skipped_count = 0
-            all_aweme_data: list[dict[str, Any]] = []
+
+            exif_queue: asyncio.Queue | None = None
+            exif_task: asyncio.Task | None = None
+            if config.get("update_exif", False):
+                exif_queue = asyncio.Queue()
+                exif_task = asyncio.create_task(
+                    self._exif_worker(exif_queue, user_path, emit, user_nickname)
+                )
 
             async for aweme_list in handler.fetch_user_post_videos(
                 sec_user_id=sec_user_id,
@@ -366,7 +406,8 @@ class DouyinCrawlerService:
                 if aweme_data_list:
                     await downloader.create_download_tasks(config, aweme_data_list, user_path)
                     new_video_count += len(aweme_data_list)
-                    all_aweme_data.extend(aweme_data_list)
+                    if exif_queue is not None:
+                        await exif_queue.put(list(aweme_data_list))
                     await emit(
                         "item_downloaded",
                         f"用户 {user_nickname} 下载 {len(aweme_data_list)} 个作品",
@@ -391,19 +432,9 @@ class DouyinCrawlerService:
                     },
                 )
 
-                await asyncio.sleep(2)
-
-            if config.get("update_exif", False) and all_aweme_data:
-                await emit(
-                    "user_info",
-                    f"用户 {user_nickname} 开始更新媒体 EXIF 时间",
-                    {"nickname": user_nickname},
-                )
-                exif_stats = await asyncio.to_thread(
-                    self.process_downloaded_files,
-                    user_path,
-                    all_aweme_data,
-                )
+            if exif_queue is not None and exif_task is not None:
+                await exif_queue.put(None)  # sentinel to stop worker
+                exif_stats = await exif_task
                 await emit(
                     "user_info",
                     (

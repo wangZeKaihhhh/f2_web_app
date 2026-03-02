@@ -850,8 +850,8 @@ export function TasksPanel() {
             </p>
           </div>
 
-          <div className="surface-log mt-2 rounded-xl p-3 font-mono text-xs text-paper">
-            <div ref={logsPanelRef} onScroll={onLogsScroll} className="max-h-80 overflow-auto">
+          <div className="surface-log mt-2 min-w-0 rounded-xl p-3 font-mono text-xs text-paper">
+            <div ref={logsPanelRef} onScroll={onLogsScroll} className="max-h-80 overflow-auto break-all">
               {selectedTaskLogs.length === 0 ? (
                 <p className="opacity-70">暂无日志</p>
               ) : (

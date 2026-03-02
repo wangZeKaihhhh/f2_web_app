@@ -12,6 +12,8 @@ from app.core.auth_service import AuthService, extract_bearer_token
 from app.core.crawler_service import DouyinCrawlerService
 from app.core.download_path_policy import DownloadPathPolicy
 from app.core.login_rate_limiter import LoginRateLimiter
+from app.core.schedule_store import ScheduleStore
+from app.core.scheduler_service import SchedulerService
 from app.core.settings_store import SettingsStore
 from app.core.task_manager import TaskManager
 from app.core.task_store import TaskStore
@@ -20,6 +22,10 @@ from app.models import (
     AuthStatus,
     AuthTokenResponse,
     DownloaderSettings,
+    ScheduleCreateRequest,
+    ScheduleListResponse,
+    ScheduleSummary,
+    ScheduleUpdateRequest,
     TaskCreateRequest,
     TaskListResponse,
     TaskDetail,
@@ -174,6 +180,17 @@ def create_app() -> FastAPI:
         task_store=task_store,
     )
 
+    schedule_db_file = os.getenv("SCHEDULE_DB_FILE") or _resolve_writable_file(
+        Path(os.environ["STATE_DIR"]) / "schedules.sqlite3",
+        runtime_root / "state" / "schedules.sqlite3",
+    )
+    schedule_store = ScheduleStore(schedule_db_file)
+    scheduler_service = SchedulerService(
+        schedule_store=schedule_store,
+        settings_store=settings_store,
+        task_manager=task_manager,
+    )
+
     @app.middleware("http")
     async def _auth_guard(request: Request, call_next):
         path = request.url.path
@@ -223,9 +240,11 @@ def create_app() -> FastAPI:
         await settings_store.save(settings)
 
         await task_manager.startup()
+        await scheduler_service.startup()
 
     @app.on_event("shutdown")
     async def _shutdown() -> None:
+        await scheduler_service.shutdown()
         await task_manager.shutdown()
 
     @app.get("/api/health")
@@ -355,6 +374,70 @@ def create_app() -> FastAPI:
             return await task_manager.cancel_task(task_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="任务不存在") from exc
+
+    @app.get("/api/schedules", response_model=ScheduleListResponse)
+    async def list_schedules() -> ScheduleListResponse:
+        items = await scheduler_service.list_schedules()
+        return ScheduleListResponse(items=items, total=len(items))
+
+    @app.post("/api/schedules", response_model=ScheduleSummary)
+    async def post_schedule(payload: ScheduleCreateRequest) -> ScheduleSummary:
+        if not payload.user_list:
+            raise HTTPException(status_code=400, detail="用户列表不能为空")
+        try:
+            return await scheduler_service.create_schedule(
+                name=payload.name,
+                cron_expr=payload.cron_expr,
+                user_list=payload.user_list,
+                enabled=payload.enabled,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/schedules/{schedule_id}", response_model=ScheduleSummary)
+    async def get_schedule(schedule_id: str) -> ScheduleSummary:
+        try:
+            return await scheduler_service.get_schedule(schedule_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="计划不存在") from exc
+
+    @app.put("/api/schedules/{schedule_id}", response_model=ScheduleSummary)
+    async def put_schedule(schedule_id: str, payload: ScheduleUpdateRequest) -> ScheduleSummary:
+        try:
+            return await scheduler_service.update_schedule(
+                schedule_id=schedule_id,
+                name=payload.name,
+                cron_expr=payload.cron_expr,
+                user_list=payload.user_list,
+                enabled=payload.enabled,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="计划不存在") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.delete("/api/schedules/{schedule_id}")
+    async def delete_schedule(schedule_id: str) -> dict[str, bool]:
+        try:
+            await scheduler_service.delete_schedule(schedule_id)
+            return {"ok": True}
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="计划不存在") from exc
+
+    @app.post("/api/schedules/{schedule_id}/toggle", response_model=ScheduleSummary)
+    async def post_schedule_toggle(schedule_id: str) -> ScheduleSummary:
+        try:
+            return await scheduler_service.toggle_schedule(schedule_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="计划不存在") from exc
+
+    @app.post("/api/schedules/{schedule_id}/run")
+    async def post_schedule_run(schedule_id: str) -> dict[str, str]:
+        try:
+            task_id = await scheduler_service.run_now(schedule_id)
+            return {"task_id": task_id}
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="计划不存在") from exc
 
     @app.websocket("/ws/tasks/{task_id}")
     async def ws_task(websocket: WebSocket, task_id: str) -> None:
