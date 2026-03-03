@@ -62,6 +62,7 @@ class DownloaderSettings(BaseModel):
     interval: str = "all"
 
     update_exif: bool = True
+    live_compose: bool = True
     incremental_mode: bool = True
     incremental_threshold: int = 20
 

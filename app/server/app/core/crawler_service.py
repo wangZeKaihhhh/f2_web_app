@@ -109,6 +109,7 @@ class DouyinCrawlerService:
             "interval": settings.interval,
             "cookie": settings.douyin_cookie,
             "update_exif": settings.update_exif,
+            "live_compose": settings.live_compose,
             "incremental_mode": settings.incremental_mode,
             "incremental_threshold": settings.incremental_threshold,
         }
@@ -405,6 +406,29 @@ class DouyinCrawlerService:
 
                 if aweme_data_list:
                     await downloader.create_download_tasks(config, aweme_data_list, user_path)
+
+                    # 合成 live 图为安卓 Motion Photo
+                    if config.get("live_compose", False):
+                        from app.core.live_composer import process_live_photos
+
+                        compose_stats = await asyncio.to_thread(
+                            process_live_photos,
+                            user_path,
+                            aweme_data_list,
+                            config.get("naming"),
+                            config.get("folderize", False),
+                        )
+                        if compose_stats["composed"] > 0:
+                            await emit(
+                                "live_composed",
+                                f"合成 {compose_stats['composed']} 个实况照片为 Motion Photo",
+                                {
+                                    "nickname": user_nickname,
+                                    "composed": compose_stats["composed"],
+                                    "failed": compose_stats["failed"],
+                                },
+                            )
+
                     new_video_count += len(aweme_data_list)
                     if exif_queue is not None:
                         await exif_queue.put(list(aweme_data_list))
