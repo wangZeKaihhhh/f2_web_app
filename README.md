@@ -17,6 +17,15 @@
 - 配置持久化与敏感字段加密存储
 - FPK 一键打包（适配飞牛 fnOS）
 
+### 实况合成 Motion Photo
+
+抖音实况（Live Photo）下载后会产生两组独立文件：`_image_N.webp`（静态图）和 `_live_N.mp4`（视频）。开启「实况合成 Motion Photo」后，下载完成会自动将配对文件合成为安卓 Motion Photo 格式（`_motion_N.jpg`），并删除原始分离文件。
+
+- 在设置面板中通过「实况合成 Motion Photo」开关控制，默认开启
+- 合成原理：JPG + MP4 字节拼接，通过 XMP-GCamera 元数据标识视频偏移量
+- 依赖 `ffmpeg`（必需）和 `exiftool`（可选，缺失时退化为裸拼接，部分安卓系统仍可识别）
+- 合成后的 `.jpg` 文件可传到安卓设备 Google Photos 中播放实况效果
+
 ### 计划任务
 
 支持通过 Cron 表达式配置定时采集计划，到期后自动创建并执行任务。

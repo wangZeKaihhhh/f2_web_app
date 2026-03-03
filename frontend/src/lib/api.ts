@@ -23,6 +23,7 @@ export interface DownloaderSettings {
   naming: string;
   interval: string;
   update_exif: boolean;
+  live_compose: boolean;
   incremental_mode: boolean;
   incremental_threshold: number;
   proxy_http: string;

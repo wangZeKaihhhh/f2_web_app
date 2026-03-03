@@ -604,6 +604,16 @@ export function SettingsPanel() {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
+                    checked={settings.live_compose}
+                    onChange={(event) =>
+                      updateSetting("live_compose", event.target.checked)
+                    }
+                  />
+                  实况合成 Motion Photo
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
                     checked={settings.folderize}
                     onChange={(event) =>
                       updateSetting("folderize", event.target.checked)
