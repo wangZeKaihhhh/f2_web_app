@@ -17,6 +17,7 @@ frontend/tsconfig.tsbuildinfo
 
 # Build artifacts
 app/docker/context/
+app/server/wheels/
 *.fpk
 
 # macOS

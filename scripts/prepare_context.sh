@@ -19,3 +19,6 @@ cp "$ROOT_DIR/backend/requirements.txt" "$SERVER_DIR/requirements.txt"
 cp -R "$ROOT_DIR/frontend/dist/." "$FRONTEND_DIST_DIR/"
 
 find "$SERVER_DIR" -type d -name '__pycache__' -prune -exec rm -rf {} +
+
+# 下载 wheels 用于离线安装
+bash "$ROOT_DIR/scripts/download_wheels.sh"

@@ -26,7 +26,9 @@ if [ ! -d "${VENV_DIR}" ]; then
     python3 -m venv "${VENV_DIR}"
 fi
 
-"${VENV_DIR}/bin/python3" -m pip install --upgrade pip
-"${VENV_DIR}/bin/pip" install --no-cache-dir -r "${REQ_FILE}"
+WHEELS_DIR="${SERVER_DIR}/wheels"
+
+"${VENV_DIR}/bin/python3" -m pip install --no-index --find-links "${WHEELS_DIR}" --upgrade pip
+"${VENV_DIR}/bin/pip" install --no-index --find-links "${WHEELS_DIR}" -r "${REQ_FILE}"
 
 exit 0
