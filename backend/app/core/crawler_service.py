@@ -61,7 +61,7 @@ class EmitBridgeLogHandler(logging.Handler):
 
 
 class DouyinCrawlerService:
-    FILE_TIME_PATTERN = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})")
+    FILE_TIME_PATTERN = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})")
 
     def __init__(self) -> None:
         requested_state_dir = Path(os.getenv("STATE_DIR", "/data/state"))
@@ -120,11 +120,11 @@ class DouyinCrawlerService:
         if not user_path.exists():
             return existing_times
 
-        time_pattern = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})")
+        time_pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})")
         try:
             for file_path in user_path.iterdir():
                 if file_path.is_file():
-                    match = time_pattern.match(file_path.name)
+                    match = time_pattern.search(file_path.name)
                     if match:
                         existing_times.add(match.group(1))
         except Exception:
@@ -260,7 +260,7 @@ class DouyinCrawlerService:
                 continue
 
             stats["files_scanned"] += 1
-            match = cls.FILE_TIME_PATTERN.match(file_path.name)
+            match = cls.FILE_TIME_PATTERN.search(file_path.name)
             if not match:
                 continue
 
