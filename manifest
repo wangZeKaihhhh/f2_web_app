@@ -1,5 +1,5 @@
 appname               = App.Native.f2
-version               = 0.1.3
+version               = 0.1.4
 display_name          = F2
 desc                  = F2 webui
 arch                  = x86_64
