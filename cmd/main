@@ -115,7 +115,7 @@ start_process() {
     export TRIM_DATA_ACCESSIBLE_PATHS="${TRIM_DATA_ACCESSIBLE_PATHS:-}"
     export TRIM_DATA_SHARE_PATHS="${TRIM_DATA_SHARE_PATHS:-}"
 
-    log_msg "Starting F2 Web App on port ${PORT} ..."
+    log_msg "Starting F2 App on port ${PORT} ..."
     (
         cd "${SERVER_DIR}"
         "${pybin}" -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" >> "${LOG_FILE}" 2>&1

@@ -1,7 +1,7 @@
 {
     ".url": {
-        "App.Native.f2-web-app.Application": {
-            "title": "F2 Web App",
+        "App.Native.f2.Application": {
+            "title": "F2",
             "icon": "images/icon_{0}.png",
             "type": "url",
             "protocol": "http",

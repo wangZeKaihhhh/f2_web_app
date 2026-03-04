@@ -5,7 +5,7 @@
                 "name": "downloads",
                 "permission": {
                     "rw": [
-                        "docker-f2-web-app"
+                        "f2"
                     ]
                 }
             }
