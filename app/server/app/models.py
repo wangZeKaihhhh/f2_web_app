@@ -45,13 +45,13 @@ class DownloaderSettings(BaseModel):
     user_list: list[UserTarget] = Field(default_factory=list)
     douyin_cookie: str = ""
 
-    max_tasks: int = 3
+    max_tasks: int = 10
     page_counts: int = 20
     max_counts: int | None = None
 
-    timeout: int = 10
-    max_retries: int = 5
-    max_connections: int = 5
+    timeout: int = 60
+    max_retries: int = 3
+    max_connections: int = 10
 
     mode: str = "post"
     music: bool = False
