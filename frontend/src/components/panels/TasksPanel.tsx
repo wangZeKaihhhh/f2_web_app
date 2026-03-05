@@ -522,7 +522,7 @@ export function TasksPanel() {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">
           任务
         </h2>
@@ -530,8 +530,8 @@ export function TasksPanel() {
           <Button disabled={starting} onClick={() => void openStartTaskDialog()}>
             {starting ? "启动中..." : "开始任务"}
           </Button>
-          <p className="font-mono text-xs text-slate">
-            表格视图 / 每页 {DEFAULT_TASK_LIST_LIMIT} 条
+          <p className="hidden font-mono text-xs text-slate sm:block">
+            每页 {DEFAULT_TASK_LIST_LIMIT} 条
           </p>
         </div>
       </div>
@@ -545,151 +545,199 @@ export function TasksPanel() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                className="max-w-md"
-                value={startTaskSearch}
-                onChange={(event) => {
-                  setStartTaskSearch(event.target.value);
-                  setStartTaskPage(1);
-                }}
-                placeholder="搜索名称或 URL / sec_user_id"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() =>
-                  setSelectedStartUserIndexes(
-                    startTaskCandidates.map((_, index) => index),
-                  )
-                }
-              >
-                全选
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => setSelectedStartUserIndexes([])}
-              >
-                清空
-              </Button>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+            <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  className="w-full sm:max-w-md"
+                  value={startTaskSearch}
+                  onChange={(event) => {
+                    setStartTaskSearch(event.target.value);
+                    setStartTaskPage(1);
+                  }}
+                  placeholder="搜索名称或 URL / sec_user_id"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() =>
+                    setSelectedStartUserIndexes(
+                      startTaskCandidates.map((_, index) => index),
+                    )
+                  }
+                >
+                  全选
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => setSelectedStartUserIndexes([])}
+                >
+                  清空
+                </Button>
+              </div>
+              <p className="font-mono text-xs text-slate">
+                已选 {selectedStartUserIndexes.length} / {startTaskCandidates.length}
+              </p>
             </div>
-            <p className="font-mono text-xs text-slate">
-              已选 {selectedStartUserIndexes.length} / {startTaskCandidates.length}
-            </p>
-          </div>
 
-          <div className="max-h-80 overflow-auto rounded-xl border border-paper/70 p-2">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
+            {/* 移动端卡片列表 */}
+            <div className="max-h-64 space-y-2 overflow-auto rounded-xl border border-paper/70 p-2 sm:hidden">
+              {filteredStartTaskCandidates.length === 0 ? (
+                <p className="py-4 text-center text-xs text-slate">未找到匹配用户</p>
+              ) : (
+                pagedStartTaskCandidates.map(({ user, index }, rowIndex) => (
+                  <label
+                    key={`start-user-card-${index}`}
+                    className="flex items-start gap-2 rounded-lg border border-slate/15 bg-paper/40 p-2.5"
+                  >
                     <input
                       type="checkbox"
-                      checked={allPagedStartUsersSelected}
-                      onChange={(event) =>
-                        toggleAllPagedStartTaskUsers(event.target.checked)
-                      }
+                      className="mt-0.5 shrink-0"
+                      checked={selectedStartUserIndexes.includes(index)}
+                      onChange={(event) => toggleStartTaskUser(index, event.target.checked)}
                     />
-                  </TableHead>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead className="w-44">名称</TableHead>
-                  <TableHead>URL / sec_user_id</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStartTaskCandidates.length === 0 ? (
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[11px] text-slate">#{startTaskPageOffset + rowIndex + 1}</span>
+                        <span className="truncate text-xs font-medium">{user.name || "-"}</span>
+                      </div>
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-slate">{user.url}</p>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+
+            {/* 桌面端表格 */}
+            <div className="hidden max-h-80 overflow-auto rounded-xl border border-paper/70 p-2 sm:block">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-xs text-slate">
-                      未找到匹配用户
-                    </TableCell>
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={allPagedStartUsersSelected}
+                        onChange={(event) =>
+                          toggleAllPagedStartTaskUsers(event.target.checked)
+                        }
+                      />
+                    </TableHead>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead className="w-44">名称</TableHead>
+                    <TableHead>URL / sec_user_id</TableHead>
                   </TableRow>
-                ) : (
-                  pagedStartTaskCandidates.map(({ user, index }, rowIndex) => (
-                    <TableRow key={`start-user-${index}`}>
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={selectedStartUserIndexes.includes(index)}
-                          onChange={(event) =>
-                            toggleStartTaskUser(index, event.target.checked)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-slate">
-                        {startTaskPageOffset + rowIndex + 1}
-                      </TableCell>
-                      <TableCell className="text-xs">{user.name || "-"}</TableCell>
-                      <TableCell className="font-mono text-[11px]">
-                        {user.url}
+                </TableHeader>
+                <TableBody>
+                  {filteredStartTaskCandidates.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-xs text-slate">
+                        未找到匹配用户
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-mono text-xs text-slate">
-              第 {startTaskSafePage} / {startTaskTotalPages} 页 · 共 {filteredStartTaskCandidates.length} 条 · 每页{" "}
-              {START_TASK_USER_PAGE_SIZE} 条
-            </p>
-            <Pagination className="mx-0 w-auto justify-end">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    className={
-                      startTaskSafePage <= 1
-                        ? "pointer-events-none opacity-50"
-                        : undefined
-                    }
-                    onClick={(event) => {
-                      event.preventDefault();
-                      onPrevStartTaskPage();
-                    }}
-                  />
-                </PaginationItem>
-                {startTaskPageTokens.map((token, index) =>
-                  typeof token === "number" ? (
-                    <PaginationItem key={`start-task-page-${token}`}>
-                      <PaginationLink
-                        href="#"
-                        isActive={token === startTaskSafePage}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          onStartTaskPageChange(token);
-                        }}
-                      >
-                        {token}
-                      </PaginationLink>
-                    </PaginationItem>
                   ) : (
-                    <PaginationItem key={`start-task-ellipsis-${token}-${index}`}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  ),
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    className={
-                      startTaskSafePage >= startTaskTotalPages
-                        ? "pointer-events-none opacity-50"
-                        : undefined
-                    }
-                    onClick={(event) => {
-                      event.preventDefault();
-                      onNextStartTaskPage();
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+                    pagedStartTaskCandidates.map(({ user, index }, rowIndex) => (
+                      <TableRow key={`start-user-${index}`}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selectedStartUserIndexes.includes(index)}
+                            onChange={(event) =>
+                              toggleStartTaskUser(index, event.target.checked)
+                            }
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-slate">
+                          {startTaskPageOffset + rowIndex + 1}
+                        </TableCell>
+                        <TableCell className="text-xs">{user.name || "-"}</TableCell>
+                        <TableCell className="font-mono text-[11px]">
+                          {user.url}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono text-xs text-slate">
+                {startTaskSafePage}/{startTaskTotalPages} 页 · {filteredStartTaskCandidates.length} 条
+              </p>
+              <div className="flex gap-1 sm:hidden">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={startTaskSafePage <= 1}
+                  onClick={(event) => { event.preventDefault(); onPrevStartTaskPage(); }}
+                >
+                  上一页
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={startTaskSafePage >= startTaskTotalPages}
+                  onClick={(event) => { event.preventDefault(); onNextStartTaskPage(); }}
+                >
+                  下一页
+                </Button>
+              </div>
+              <Pagination className="mx-0 hidden w-auto justify-end sm:flex">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      className={
+                        startTaskSafePage <= 1
+                          ? "pointer-events-none opacity-50"
+                          : undefined
+                      }
+                      onClick={(event) => {
+                        event.preventDefault();
+                        onPrevStartTaskPage();
+                      }}
+                    />
+                  </PaginationItem>
+                  {startTaskPageTokens.map((token, index) =>
+                    typeof token === "number" ? (
+                      <PaginationItem key={`start-task-page-${token}`}>
+                        <PaginationLink
+                          href="#"
+                          isActive={token === startTaskSafePage}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            onStartTaskPageChange(token);
+                          }}
+                        >
+                          {token}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={`start-task-ellipsis-${token}-${index}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ),
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      className={
+                        startTaskSafePage >= startTaskTotalPages
+                          ? "pointer-events-none opacity-50"
+                          : undefined
+                      }
+                      onClick={(event) => {
+                        event.preventDefault();
+                        onNextStartTaskPage();
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           </div>
 
           <DialogFooter>
@@ -707,7 +755,43 @@ export function TasksPanel() {
         </DialogContent>
       </Dialog>
 
-      <div className="surface-soft rounded-xl p-2">
+      {/* 移动端卡片视图 */}
+      <div className="space-y-3 sm:hidden">
+        {tasks.length === 0 ? (
+          <div className="surface-soft rounded-xl p-6 text-center text-sm text-slate">
+            暂无任务
+          </div>
+        ) : (
+          tasks.map((task) => {
+            const canCancel = !["success", "failed", "cancelled"].includes(task.status);
+            return (
+              <div key={task.task_id} className="surface-soft rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-slate truncate max-w-[60%]">{task.task_id}</span>
+                  <span className="text-xs font-medium">{formatTaskStatus(task.status)}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-[11px] text-slate">
+                  <span>开始: {formatTaskTime(task.started_at)}</span>
+                  <span>结束: {formatTaskTime(task.ended_at)}</span>
+                  <span>用时: {formatTaskDuration(task)}</span>
+                </div>
+                <p className="text-[11px] text-slate truncate">{formatTaskSummary(task)}</p>
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openLogsDialog(task.task_id)}>
+                    查看日志
+                  </Button>
+                  <Button size="sm" variant="destructive" disabled={!canCancel} onClick={() => void onCancelTask(task.task_id)}>
+                    取消
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* 桌面端表格视图 */}
+      <div className="surface-soft hidden rounded-xl p-2 sm:block">
         <div className="max-h-[30rem] overflow-auto">
           <Table>
             <TableHeader>
@@ -840,12 +924,12 @@ export function TasksPanel() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-2 rounded-lg border border-paper/60 p-3 text-xs text-slate md:grid-cols-2">
+          <div className="grid gap-2 rounded-lg border border-paper/60 p-3 text-xs text-slate sm:grid-cols-2">
             <p>状态: {selectedTask ? formatTaskStatus(selectedTask.status) : "-"}</p>
             <p>创建: {selectedTask ? formatTaskTime(selectedTask.created_at) : "-"}</p>
             <p>开始: {selectedTask ? formatTaskTime(selectedTask.started_at) : "-"}</p>
             <p>结束: {selectedTask ? formatTaskTime(selectedTask.ended_at) : "-"}</p>
-            <p className="md:col-span-2">
+            <p className="sm:col-span-2">
               汇总: {selectedTask ? formatTaskSummary(selectedTask) : "-"}
             </p>
           </div>

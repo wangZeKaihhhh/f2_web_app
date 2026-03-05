@@ -345,7 +345,50 @@ export function SettingsPanel() {
             </div>
           </div>
 
-          <div className="surface-muted mt-3 rounded-xl p-2">
+          {/* 移动端卡片视图 */}
+          <div className="surface-muted mt-3 rounded-xl p-2 sm:hidden">
+            <div className="flex items-center gap-2 px-1 pb-2">
+              <input
+                type="checkbox"
+                checked={allRowsSelected}
+                onChange={(event) => toggleAllUserSelection(event.target.checked)}
+              />
+              <span className="text-[11px] text-slate">全选</span>
+            </div>
+            <div className="max-h-72 space-y-2 overflow-auto">
+              {settings.user_list.map((item, index) => (
+                <div key={`user-card-${index}`} className="rounded-lg border border-slate/15 bg-paper/40 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIndexes.includes(index)}
+                        onChange={(event) => toggleUserSelection(index, event.target.checked)}
+                      />
+                      <span className="font-mono text-[11px] text-slate">#{index + 1}</span>
+                    </div>
+                    <Button variant="destructive" size="sm" onClick={() => removeUser(index)}>
+                      删除
+                    </Button>
+                  </div>
+                  <Input
+                    value={item.name}
+                    onChange={(event) => updateUser(index, "name", event.target.value)}
+                    placeholder="名称（可选）"
+                  />
+                  <Input
+                    className="font-mono text-xs"
+                    value={item.url}
+                    onChange={(event) => updateUser(index, "url", event.target.value)}
+                    placeholder="主页链接或 sec_user_id"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 桌面端表格视图 */}
+          <div className="surface-muted mt-3 hidden rounded-xl p-2 sm:block">
             <div className="max-h-72 overflow-auto pr-1">
               <Table>
                 <TableHeader>
@@ -473,7 +516,7 @@ export function SettingsPanel() {
           <div className="mt-4 space-y-4">
             <div>
               <p className="text-xs font-semibold text-ink">并发与网络</p>
-              <div className="mt-2 grid max-w-3xl gap-3 md:grid-cols-3">
+              <div className="mt-2 grid max-w-3xl gap-3 sm:grid-cols-2 md:grid-cols-3">
                 <label className="block text-xs text-slate">
                   用户并发
                   <Input
@@ -563,7 +606,7 @@ export function SettingsPanel() {
 
             <div>
               <p className="text-xs font-semibold text-ink">增量与写入行为</p>
-              <div className="mt-2 grid max-w-3xl gap-3 md:grid-cols-2">
+              <div className="mt-2 grid max-w-3xl gap-3 sm:grid-cols-2">
                 <label className="block text-xs text-slate">
                   增量阈值
                   <Input

@@ -12,12 +12,12 @@ export default function App() {
   const activePanel = dashboardRouteApi.useParams().panel as SidebarPanel;
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden">
+    <div className="relative flex h-dvh flex-col overflow-hidden">
       <header className="z-40 shrink-0 border-b border-slate/25 bg-paper/85 px-3 py-3 backdrop-blur-xl md:px-6">
         <DashboardTopBar />
       </header>
 
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <DashboardSidebar />
 
         <main className="relative min-h-0 flex-1 overflow-y-auto bg-paper/35">

@@ -410,8 +410,53 @@ export function SchedulesPanel() {
         <Button onClick={() => void openCreateDialog()}>新建计划</Button>
       </div>
 
-      {/* Schedule list */}
-      <div className="surface-soft rounded-xl p-2">
+      {/* 移动端卡片视图 */}
+      <div className="space-y-3 sm:hidden">
+        {schedules.length === 0 ? (
+          <div className="surface-soft rounded-xl p-6 text-center text-sm text-slate">
+            暂无计划任务
+          </div>
+        ) : (
+          schedules.map((schedule) => (
+            <div key={schedule.schedule_id} className="surface-soft rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{schedule.name}</span>
+                <span
+                  className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    schedule.enabled
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {schedule.enabled ? "启用" : "禁用"}
+                </span>
+              </div>
+              <div className="space-y-1 text-[11px] text-slate">
+                <p>执行周期: <span className="font-mono">{describeCron(schedule.cron_expr)}</span></p>
+                <p>上次执行: {formatTime(schedule.last_run_at)}</p>
+                <p>下次执行: {formatTime(schedule.next_run_at)}</p>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button size="sm" variant="outline" onClick={() => void openEditDialog(schedule)}>
+                  编辑
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void onToggle(schedule.schedule_id)}>
+                  {schedule.enabled ? "禁用" : "启用"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void onRunNow(schedule.schedule_id)}>
+                  立即执行
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => openDeleteDialog(schedule.schedule_id)}>
+                  删除
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* 桌面端表格视图 */}
+      <div className="surface-soft hidden rounded-xl p-2 sm:block">
         <div className="max-h-[30rem] overflow-auto">
           <Table>
             <TableHeader>
@@ -507,7 +552,7 @@ export function SchedulesPanel() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
             {/* Name */}
             <label className="block text-xs text-slate">
               计划名称
@@ -556,7 +601,7 @@ export function SchedulesPanel() {
                   />
                   <div className="surface-muted rounded-lg p-3 text-[11px] leading-relaxed text-slate">
                     <p className="font-semibold text-ink">Cron 表达式格式: 分 时 日 月 周</p>
-                    <div className="mt-1.5 font-mono">
+                    <div className="mt-1.5 hidden font-mono sm:block">
                       <p>┌─── 分钟 (0-59)</p>
                       <p>│ ┌─── 小时 (0-23)</p>
                       <p>│ │ ┌─── 日 (1-31)</p>
@@ -565,13 +610,6 @@ export function SchedulesPanel() {
                       <p>* * * * *</p>
                     </div>
                     <p className="mt-1.5">
-                      <span className="font-medium text-ink">特殊符号: </span>
-                      <span className="font-mono">*</span> 任意值 &nbsp;
-                      <span className="font-mono">,</span> 多个值 &nbsp;
-                      <span className="font-mono">-</span> 范围 &nbsp;
-                      <span className="font-mono">*/n</span> 每隔 n
-                    </p>
-                    <p className="mt-1">
                       <span className="font-medium text-ink">示例: </span>
                       <span className="font-mono">30 3 * * *</span> 每天 03:30 &nbsp;
                       <span className="font-mono">0 8 * * 1-5</span> 工作日 08:00 &nbsp;
@@ -590,10 +628,10 @@ export function SchedulesPanel() {
 
             {/* User selection */}
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
-                    className="max-w-md"
+                    className="w-full sm:max-w-md"
                     value={formUserSearch}
                     onChange={(e) => {
                       setFormUserSearch(e.target.value);
@@ -627,7 +665,36 @@ export function SchedulesPanel() {
                 </p>
               </div>
 
-              <div className="mt-2 max-h-56 overflow-auto rounded-xl border border-paper/70 p-2">
+              {/* 移动端卡片列表 */}
+              <div className="mt-2 max-h-56 space-y-2 overflow-auto rounded-xl border border-paper/70 p-2 sm:hidden">
+                {filteredUsers.length === 0 ? (
+                  <p className="py-4 text-center text-xs text-slate">未找到匹配用户</p>
+                ) : (
+                  pagedUsers.map(({ user, index }, rowIndex) => (
+                    <label
+                      key={`sched-user-card-${index}`}
+                      className="flex items-start gap-2 rounded-lg border border-slate/15 bg-paper/40 p-2.5"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 shrink-0"
+                        checked={formSelectedUserIndexes.includes(index)}
+                        onChange={(e) => toggleUser(index, e.target.checked)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[11px] text-slate">#{userPageOffset + rowIndex + 1}</span>
+                          <span className="text-xs font-medium truncate">{user.name || "-"}</span>
+                        </div>
+                        <p className="mt-0.5 truncate font-mono text-[11px] text-slate">{user.url}</p>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+
+              {/* 桌面端表格 */}
+              <div className="mt-2 hidden max-h-56 overflow-auto rounded-xl border border-paper/70 p-2 sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -676,7 +743,7 @@ export function SchedulesPanel() {
 
               <div className="mt-2 flex items-center justify-between">
                 <p className="font-mono text-xs text-slate">
-                  第 {safeUserPage} / {userTotalPages} 页 · 共 {filteredUsers.length} 条
+                  {safeUserPage}/{userTotalPages} 页 · {filteredUsers.length} 条
                 </p>
                 <div className="flex gap-1">
                   <Button

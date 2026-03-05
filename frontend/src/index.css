@@ -47,6 +47,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   font-family:
     'SF Pro Text',
     -apple-system,
@@ -65,6 +66,7 @@ body {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 @layer components {
