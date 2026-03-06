@@ -2,17 +2,53 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import datetime as dt_mod
 import logging
+import logging.handlers
 import os
 import re
 import subprocess
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections.abc import Awaitable, Callable
-from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
+
+_TZ_CN = dt_mod.timezone(dt_mod.timedelta(hours=8))
+
+logger = logging.getLogger(__name__)
+
+
+def _setup_exif_logger() -> logging.Logger:
+    """创建写入文件的 EXIF 专用 logger，用于事后排查。"""
+    exif_logger = logging.getLogger("exif_update")
+    if exif_logger.handlers:
+        return exif_logger
+
+    log_dir = Path(os.getenv("STATE_DIR", "/data/state"))
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        log_dir = Path.cwd() / ".runtime" / "state"
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+    handler = logging.handlers.RotatingFileHandler(
+        log_dir / "exif_update.log",
+        maxBytes=5 * 1024 * 1024,  # 5MB
+        backupCount=3,
+        encoding="utf-8",
+    )
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    )
+    exif_logger.addHandler(handler)
+    exif_logger.setLevel(logging.DEBUG)
+    exif_logger.propagate = False
+    return exif_logger
+
+
+exif_logger = _setup_exif_logger()
 
 from app.models import DownloaderSettings, TaskResult, UserStat, UserTarget
 
@@ -135,8 +171,8 @@ class DouyinCrawlerService:
     @staticmethod
     def update_media_exif(file_path: Path, create_time_timestamp: float) -> bool:
         try:
-            dt = datetime.fromtimestamp(create_time_timestamp)
-            exif_time = dt.strftime("%Y:%m:%d %H:%M:%S+08:00")
+            aware_dt = dt_mod.datetime.fromtimestamp(create_time_timestamp, tz=_TZ_CN)
+            exif_time = aware_dt.strftime("%Y:%m:%d %H:%M:%S+08:00")
             cmd = [
                 "exiftool",
                 "-overwrite_original",
@@ -149,9 +185,17 @@ class DouyinCrawlerService:
                 "-MediaModifyDate=" + exif_time,
                 str(file_path),
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                msg = result.stderr.strip()
+                logger.warning("EXIF 更新失败 %s: %s", file_path.name, msg)
+                exif_logger.warning("FAIL %s | returncode=%d | %s", file_path, result.returncode, msg)
+            else:
+                exif_logger.debug("OK %s", file_path.name)
             return result.returncode == 0
-        except Exception:
+        except Exception as exc:
+            logger.warning("EXIF 更新异常 %s: %s", file_path.name, exc)
+            exif_logger.error("ERROR %s | %s", file_path, exc)
             return False
 
     @classmethod
@@ -160,42 +204,51 @@ class DouyinCrawlerService:
         file_paths: list[Path],
         create_time_timestamp: float,
         chunk_size: int = 50,
-    ) -> int:
+    ) -> tuple[int, list[str]]:
+        """返回 (成功数, 失败文件名列表)。"""
         if not file_paths:
-            return 0
+            return 0, []
 
-        try:
-            dt = datetime.fromtimestamp(create_time_timestamp)
-            exif_time = dt.strftime("%Y:%m:%d %H:%M:%S+08:00")
-            base_cmd = [
-                "exiftool",
-                "-overwrite_original",
-                "-CreateDate=" + exif_time,
-                "-ModifyDate=" + exif_time,
-                "-DateTimeOriginal=" + exif_time,
-                "-TrackCreateDate=" + exif_time,
-                "-TrackModifyDate=" + exif_time,
-                "-MediaCreateDate=" + exif_time,
-                "-MediaModifyDate=" + exif_time,
-            ]
+        aware_dt = dt_mod.datetime.fromtimestamp(create_time_timestamp, tz=_TZ_CN)
+        exif_time = aware_dt.strftime("%Y:%m:%d %H:%M:%S+08:00")
+        base_cmd = [
+            "exiftool",
+            "-overwrite_original",
+            "-CreateDate=" + exif_time,
+            "-ModifyDate=" + exif_time,
+            "-DateTimeOriginal=" + exif_time,
+            "-TrackCreateDate=" + exif_time,
+            "-TrackModifyDate=" + exif_time,
+            "-MediaCreateDate=" + exif_time,
+            "-MediaModifyDate=" + exif_time,
+        ]
 
-            updated = 0
-            for i in range(0, len(file_paths), chunk_size):
-                chunk = file_paths[i : i + chunk_size]
+        updated = 0
+        failed_files: list[str] = []
+        for i in range(0, len(file_paths), chunk_size):
+            chunk = file_paths[i : i + chunk_size]
+            try:
                 cmd = [*base_cmd, *[str(path) for path in chunk]]
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=200)
                 if result.returncode == 0:
                     updated += len(chunk)
                     continue
 
-                # Fallback per-file update when a chunk fails.
-                for file_path in chunk:
-                    if cls.update_media_exif(file_path, create_time_timestamp):
-                        updated += 1
+                msg = result.stderr.strip()
+                logger.warning("EXIF 批量更新部分失败 (chunk %d-%d): %s", i, i + len(chunk), msg)
+                exif_logger.warning("BATCH FAIL chunk %d-%d | %s", i, i + len(chunk), msg)
+            except Exception as exc:
+                logger.warning("EXIF 批量更新异常 (chunk %d-%d): %s", i, i + len(chunk), exc)
+                exif_logger.error("BATCH ERROR chunk %d-%d | %s", i, i + len(chunk), exc)
 
-            return updated
-        except Exception:
-            return 0
+            # Fallback per-file update when a chunk fails.
+            for file_path in chunk:
+                if cls.update_media_exif(file_path, create_time_timestamp):
+                    updated += 1
+                else:
+                    failed_files.append(file_path.name)
+
+        return updated, failed_files
 
     @staticmethod
     def _parse_create_time_timestamp(create_time: Any) -> float | None:
@@ -205,8 +258,10 @@ class DouyinCrawlerService:
         try:
             if isinstance(create_time, str):
                 if "-" in create_time and " " in create_time:
-                    dt = datetime.strptime(create_time, "%Y-%m-%d %H-%M-%S")
-                    timestamp = dt.timestamp()
+                    # f2 用 +08:00 时区格式化，解析时也按 +08:00 还原
+                    naive = dt_mod.datetime.strptime(create_time, "%Y-%m-%d %H-%M-%S")
+                    aware = naive.replace(tzinfo=_TZ_CN)
+                    timestamp = aware.timestamp()
                 else:
                     timestamp = float(create_time)
             else:
@@ -225,11 +280,14 @@ class DouyinCrawlerService:
         aweme_data_list: list[dict[str, Any]],
     ) -> dict[str, int | float]:
         start_time = perf_counter()
-        stats: dict[str, int | float] = {
+        stats: dict[str, Any] = {
             "aweme_items": len(aweme_data_list),
             "files_scanned": 0,
             "matched_files": 0,
             "updated_files": 0,
+            "failed_files": 0,
+            "skipped_files": 0,
+            "failed_list": [],
             "time_groups": 0,
             "elapsed_seconds": 0.0,
         }
@@ -246,9 +304,9 @@ class DouyinCrawlerService:
 
             if create_time:
                 timestamp_by_time_str[str(create_time)] = timestamp
-            formatted_time = datetime.fromtimestamp(timestamp).strftime(
-                "%Y-%m-%d %H-%M-%S"
-            )
+            formatted_time = dt_mod.datetime.fromtimestamp(
+                timestamp, tz=_TZ_CN
+            ).strftime("%Y-%m-%d %H-%M-%S")
             timestamp_by_time_str[formatted_time] = timestamp
 
         if not timestamp_by_time_str:
@@ -273,6 +331,8 @@ class DouyinCrawlerService:
             stats["matched_files"] += 1
 
         stats["time_groups"] = len(grouped_files)
+        stats["skipped_files"] = stats["files_scanned"] - stats["matched_files"]
+
         max_workers = min(8, os.cpu_count() or 4)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
@@ -280,9 +340,25 @@ class DouyinCrawlerService:
                 for ts, paths in grouped_files.items()
             }
             for future in as_completed(futures):
-                stats["updated_files"] += future.result()
+                ok_count, fail_names = future.result()
+                stats["updated_files"] += ok_count
+                stats["failed_files"] += len(fail_names)
+                stats["failed_list"].extend(fail_names)
 
         stats["elapsed_seconds"] = round(perf_counter() - start_time, 2)
+
+        exif_logger.info(
+            "SUMMARY path=%s | scanned=%d skipped=%d success=%d failed=%d elapsed=%.2fs",
+            user_path,
+            stats["files_scanned"],
+            stats["skipped_files"],
+            stats["updated_files"],
+            stats["failed_files"],
+            stats["elapsed_seconds"],
+        )
+        if stats["failed_list"]:
+            exif_logger.info("FAILED FILES: %s", ", ".join(stats["failed_list"]))
+
         return stats
 
     async def _exif_worker(
@@ -291,12 +367,15 @@ class DouyinCrawlerService:
         user_path: Path,
         emit: EventEmitter,
         nickname: str,
-    ) -> dict[str, int | float]:
-        accumulated: dict[str, int | float] = {
+    ) -> dict[str, Any]:
+        accumulated: dict[str, Any] = {
             "aweme_items": 0,
             "files_scanned": 0,
             "matched_files": 0,
             "updated_files": 0,
+            "failed_files": 0,
+            "skipped_files": 0,
+            "failed_list": [],
             "time_groups": 0,
             "elapsed_seconds": 0.0,
         }
@@ -308,7 +387,11 @@ class DouyinCrawlerService:
                 self.process_downloaded_files, user_path, batch
             )
             for key in accumulated:
-                accumulated[key] += batch_stats.get(key, 0)
+                val = batch_stats.get(key, 0 if key != "failed_list" else [])
+                if key == "failed_list":
+                    accumulated[key].extend(val)
+                else:
+                    accumulated[key] += val
         return accumulated
 
     async def _download_user_videos(
@@ -459,14 +542,25 @@ class DouyinCrawlerService:
             if exif_queue is not None and exif_task is not None:
                 await exif_queue.put(None)  # sentinel to stop worker
                 exif_stats = await exif_task
+                failed_list = exif_stats.get("failed_list", [])
+                failed_detail = ""
+                if failed_list:
+                    # 最多列出 20 个失败文件名
+                    shown = failed_list[:20]
+                    failed_detail = "，失败文件: " + ", ".join(shown)
+                    if len(failed_list) > 20:
+                        failed_detail += f" ...等共 {len(failed_list)} 个"
+
                 await emit(
                     "user_info",
                     (
-                        f"用户 {user_nickname} 媒体 EXIF 更新完成，"
+                        f"用户 {user_nickname} 媒体 EXIF 更新完成 | "
                         f"扫描 {int(exif_stats['files_scanned'])}，"
-                        f"匹配 {int(exif_stats['matched_files'])}，"
-                        f"更新 {int(exif_stats['updated_files'])}，"
+                        f"跳过 {int(exif_stats.get('skipped_files', 0))}，"
+                        f"成功 {int(exif_stats['updated_files'])}，"
+                        f"失败 {int(exif_stats.get('failed_files', 0))}，"
                         f"耗时 {exif_stats['elapsed_seconds']} 秒"
+                        f"{failed_detail}"
                     ),
                     {"nickname": user_nickname, "exif_stats": exif_stats},
                 )
