@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import dayjs from "dayjs";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -60,7 +61,7 @@ function formatTaskTime(raw: string | null): string {
   if (!raw) {
     return "-";
   }
-  return new Date(raw).toLocaleString();
+  return dayjs(raw).format("YYYY-MM-DD HH:mm");
 }
 
 function formatTaskDuration(task: TaskSummary): string {
@@ -79,7 +80,11 @@ function formatTaskDuration(task: TaskSummary): string {
   seconds -= hours * 3600;
   const minutes = Math.floor(seconds / 60);
   seconds -= minutes * 60;
-  return `${hours}h ${minutes}m ${seconds}s`;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}小时`);
+  if (minutes > 0) parts.push(`${minutes}分钟`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}秒`);
+  return parts.join(" ");
 }
 
 function formatTaskStatus(status: TaskSummary["status"]): string {
@@ -155,8 +160,12 @@ export function TasksPanel() {
   const navigate = useNavigate();
 
   const [tasks, setTasks] = useState<TaskSummary[]>(() => routeData.tasks);
-  const [tasksHasMore, setTasksHasMore] = useState<boolean>(() => routeData.tasksHasMore);
-  const [tasksTotal, setTasksTotal] = useState<number>(() => routeData.tasksTotal);
+  const [tasksHasMore, setTasksHasMore] = useState<boolean>(
+    () => routeData.tasksHasMore,
+  );
+  const [tasksTotal, setTasksTotal] = useState<number>(
+    () => routeData.tasksTotal,
+  );
   const [tasksPage, setTasksPage] = useState(1);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null);
@@ -164,11 +173,14 @@ export function TasksPanel() {
   const [logsDialogOpen, setLogsDialogOpen] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startTaskDialogOpen, setStartTaskDialogOpen] = useState(false);
+  const [startTaskDownloadPath, setStartTaskDownloadPath] = useState("");
   const [startTaskSearch, setStartTaskSearch] = useState("");
   const [startTaskPage, setStartTaskPage] = useState(1);
-  const [selectedStartUserIndexes, setSelectedStartUserIndexes] = useState<number[]>([]);
-  const [startTaskCandidates, setStartTaskCandidates] = useState<UserTarget[]>(() =>
-    normalizeUserList(routeData.settings.user_list),
+  const [selectedStartUserIndexes, setSelectedStartUserIndexes] = useState<
+    number[]
+  >([]);
+  const [startTaskCandidates, setStartTaskCandidates] = useState<UserTarget[]>(
+    () => normalizeUserList(routeData.settings.user_list),
   );
 
   const logsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -190,18 +202,30 @@ export function TasksPanel() {
     1,
     Math.ceil(filteredStartTaskCandidates.length / START_TASK_USER_PAGE_SIZE),
   );
-  const startTaskSafePage = Math.max(1, Math.min(startTaskPage, startTaskTotalPages));
-  const startTaskPageOffset = (startTaskSafePage - 1) * START_TASK_USER_PAGE_SIZE;
+  const startTaskSafePage = Math.max(
+    1,
+    Math.min(startTaskPage, startTaskTotalPages),
+  );
+  const startTaskPageOffset =
+    (startTaskSafePage - 1) * START_TASK_USER_PAGE_SIZE;
   const pagedStartTaskCandidates = filteredStartTaskCandidates.slice(
     startTaskPageOffset,
     startTaskPageOffset + START_TASK_USER_PAGE_SIZE,
   );
-  const startTaskPageTokens = buildPaginationTokens(startTaskTotalPages, startTaskSafePage);
-  const tasksTotalPages = Math.max(1, Math.ceil(tasksTotal / DEFAULT_TASK_LIST_LIMIT));
+  const startTaskPageTokens = buildPaginationTokens(
+    startTaskTotalPages,
+    startTaskSafePage,
+  );
+  const tasksTotalPages = Math.max(
+    1,
+    Math.ceil(tasksTotal / DEFAULT_TASK_LIST_LIMIT),
+  );
   const taskPageTokens = buildPaginationTokens(tasksTotalPages, tasksPage);
   const allPagedStartUsersSelected =
     pagedStartTaskCandidates.length > 0 &&
-    pagedStartTaskCandidates.every(({ index }) => selectedStartUserIndexes.includes(index));
+    pagedStartTaskCandidates.every(({ index }) =>
+      selectedStartUserIndexes.includes(index),
+    );
 
   useEffect(() => {
     emitDashboardMeta({ tasksTotal, tasksPage });
@@ -275,7 +299,8 @@ export function TasksPanel() {
 
         const log: LogEntry = {
           timestamp: evt.timestamp,
-          level: levelFromData || (evt.type.endsWith("failed") ? "error" : "info"),
+          level:
+            levelFromData || (evt.type.endsWith("failed") ? "error" : "info"),
           message: evt.message,
         };
         setSelectedTaskLogs((prev) => [...prev, log].slice(-1000));
@@ -347,7 +372,8 @@ export function TasksPanel() {
         throw new Error("用户列表为空");
       }
 
-      const task = await api.createTask(userList);
+      const customPath = startTaskDownloadPath.trim();
+      const task = await api.createTask(userList, customPath || undefined);
       await refreshTasks(1);
       emitDashboardMeta({ message: `任务已创建: ${task.task_id}` });
       toast.success(`任务已创建: ${task.task_id}`);
@@ -400,6 +426,7 @@ export function TasksPanel() {
       }
 
       setSelectedStartUserIndexes(users.map((_, index) => index));
+      setStartTaskDownloadPath(latestSettings.download_path);
       setStartTaskSearch("");
       setStartTaskPage(1);
       setStartTaskDialogOpen(true);
@@ -434,7 +461,9 @@ export function TasksPanel() {
     const pagedIndexes = pagedStartTaskCandidates.map(({ index }) => index);
     if (!checked) {
       const pagedSet = new Set(pagedIndexes);
-      setSelectedStartUserIndexes((prev) => prev.filter((item) => !pagedSet.has(item)));
+      setSelectedStartUserIndexes((prev) =>
+        prev.filter((item) => !pagedSet.has(item)),
+      );
       return;
     }
 
@@ -516,7 +545,8 @@ export function TasksPanel() {
       return;
     }
 
-    const distanceToBottom = panel.scrollHeight - panel.scrollTop - panel.clientHeight;
+    const distanceToBottom =
+      panel.scrollHeight - panel.scrollTop - panel.clientHeight;
     stickToBottomRef.current = distanceToBottom <= 8;
   }
 
@@ -527,7 +557,10 @@ export function TasksPanel() {
           任务
         </h2>
         <div className="flex items-center gap-2">
-          <Button disabled={starting} onClick={() => void openStartTaskDialog()}>
+          <Button
+            disabled={starting}
+            onClick={() => void openStartTaskDialog()}
+          >
             {starting ? "启动中..." : "开始任务"}
           </Button>
           <p className="hidden font-mono text-xs text-slate sm:block">
@@ -546,6 +579,21 @@ export function TasksPanel() {
           </DialogHeader>
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate">保存目录</label>
+              <Input
+                className="w-full font-mono text-sm"
+                value={startTaskDownloadPath}
+                onChange={(e) => setStartTaskDownloadPath(e.target.value)}
+                placeholder="使用默认下载目录"
+              />
+              {routeData.allowedDownloadRoots.length > 0 && (
+                <p className="text-[11px] text-slate">
+                  授权目录: {routeData.allowedDownloadRoots.join("、")}
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Input
@@ -579,14 +627,17 @@ export function TasksPanel() {
                 </Button>
               </div>
               <p className="font-mono text-xs text-slate">
-                已选 {selectedStartUserIndexes.length} / {startTaskCandidates.length}
+                已选 {selectedStartUserIndexes.length} /{" "}
+                {startTaskCandidates.length}
               </p>
             </div>
 
             {/* 移动端卡片列表 */}
             <div className="max-h-64 space-y-2 overflow-auto rounded-xl border border-paper/70 p-2 sm:hidden">
               {filteredStartTaskCandidates.length === 0 ? (
-                <p className="py-4 text-center text-xs text-slate">未找到匹配用户</p>
+                <p className="py-4 text-center text-xs text-slate">
+                  未找到匹配用户
+                </p>
               ) : (
                 pagedStartTaskCandidates.map(({ user, index }, rowIndex) => (
                   <label
@@ -597,14 +648,22 @@ export function TasksPanel() {
                       type="checkbox"
                       className="mt-0.5 shrink-0"
                       checked={selectedStartUserIndexes.includes(index)}
-                      onChange={(event) => toggleStartTaskUser(index, event.target.checked)}
+                      onChange={(event) =>
+                        toggleStartTaskUser(index, event.target.checked)
+                      }
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[11px] text-slate">#{startTaskPageOffset + rowIndex + 1}</span>
-                        <span className="truncate text-xs font-medium">{user.name || "-"}</span>
+                        <span className="font-mono text-[11px] text-slate">
+                          #{startTaskPageOffset + rowIndex + 1}
+                        </span>
+                        <span className="truncate text-xs font-medium">
+                          {user.name || "-"}
+                        </span>
                       </div>
-                      <p className="mt-0.5 truncate font-mono text-[11px] text-slate">{user.url}</p>
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-slate">
+                        {user.url}
+                      </p>
                     </div>
                   </label>
                 ))
@@ -633,31 +692,38 @@ export function TasksPanel() {
                 <TableBody>
                   {filteredStartTaskCandidates.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-xs text-slate">
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-xs text-slate"
+                      >
                         未找到匹配用户
                       </TableCell>
                     </TableRow>
                   ) : (
-                    pagedStartTaskCandidates.map(({ user, index }, rowIndex) => (
-                      <TableRow key={`start-user-${index}`}>
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={selectedStartUserIndexes.includes(index)}
-                            onChange={(event) =>
-                              toggleStartTaskUser(index, event.target.checked)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-slate">
-                          {startTaskPageOffset + rowIndex + 1}
-                        </TableCell>
-                        <TableCell className="text-xs">{user.name || "-"}</TableCell>
-                        <TableCell className="font-mono text-[11px]">
-                          {user.url}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    pagedStartTaskCandidates.map(
+                      ({ user, index }, rowIndex) => (
+                        <TableRow key={`start-user-${index}`}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedStartUserIndexes.includes(index)}
+                              onChange={(event) =>
+                                toggleStartTaskUser(index, event.target.checked)
+                              }
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-slate">
+                            {startTaskPageOffset + rowIndex + 1}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {user.name || "-"}
+                          </TableCell>
+                          <TableCell className="font-mono text-[11px]">
+                            {user.url}
+                          </TableCell>
+                        </TableRow>
+                      ),
+                    )
                   )}
                 </TableBody>
               </Table>
@@ -665,14 +731,18 @@ export function TasksPanel() {
 
             <div className="flex items-center justify-between gap-2">
               <p className="font-mono text-xs text-slate">
-                {startTaskSafePage}/{startTaskTotalPages} 页 · {filteredStartTaskCandidates.length} 条
+                {startTaskSafePage}/{startTaskTotalPages} 页 ·{" "}
+                {filteredStartTaskCandidates.length} 条
               </p>
               <div className="flex gap-1 sm:hidden">
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={startTaskSafePage <= 1}
-                  onClick={(event) => { event.preventDefault(); onPrevStartTaskPage(); }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onPrevStartTaskPage();
+                  }}
                 >
                   上一页
                 </Button>
@@ -680,7 +750,10 @@ export function TasksPanel() {
                   size="sm"
                   variant="outline"
                   disabled={startTaskSafePage >= startTaskTotalPages}
-                  onClick={(event) => { event.preventDefault(); onNextStartTaskPage(); }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onNextStartTaskPage();
+                  }}
                 >
                   下一页
                 </Button>
@@ -716,7 +789,9 @@ export function TasksPanel() {
                         </PaginationLink>
                       </PaginationItem>
                     ) : (
-                      <PaginationItem key={`start-task-ellipsis-${token}-${index}`}>
+                      <PaginationItem
+                        key={`start-task-ellipsis-${token}-${index}`}
+                      >
                         <PaginationEllipsis />
                       </PaginationItem>
                     ),
@@ -746,7 +821,10 @@ export function TasksPanel() {
                 取消
               </Button>
             </DialogClose>
-            <Button disabled={starting} onClick={confirmStartTaskWithSelectedUsers}>
+            <Button
+              disabled={starting}
+              onClick={confirmStartTaskWithSelectedUsers}
+            >
               {starting
                 ? "启动中..."
                 : `确认启动（${selectedStartUserIndexes.length}）`}
@@ -763,24 +841,53 @@ export function TasksPanel() {
           </div>
         ) : (
           tasks.map((task) => {
-            const canCancel = !["success", "failed", "cancelled"].includes(task.status);
+            const canCancel = !["success", "failed", "cancelled"].includes(
+              task.status,
+            );
             return (
-              <div key={task.task_id} className="surface-soft rounded-xl p-3 space-y-2">
+              <div
+                key={task.task_id}
+                className="surface-soft rounded-xl p-3 space-y-2"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] text-slate truncate max-w-[60%]">{task.task_id}</span>
-                  <span className="text-xs font-medium">{formatTaskStatus(task.status)}</span>
+                  <span className="font-mono text-[11px] text-slate truncate max-w-[60%]">
+                    {task.task_id}
+                  </span>
+                  <span className="text-xs font-medium">
+                    {formatTaskStatus(task.status)}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-1 text-[11px] text-slate">
                   <span>开始: {formatTaskTime(task.started_at)}</span>
                   <span>结束: {formatTaskTime(task.ended_at)}</span>
                   <span>用时: {formatTaskDuration(task)}</span>
                 </div>
-                <p className="text-[11px] text-slate truncate">{formatTaskSummary(task)}</p>
+                <p className="text-[11px] text-slate truncate">
+                  {formatTaskSummary(task)}
+                </p>
+                {task.download_path && (
+                  <p
+                    className="font-mono text-[11px] text-slate truncate"
+                    title={task.download_path}
+                  >
+                    目录: {task.download_path}
+                  </p>
+                )}
                 <div className="flex gap-2 pt-1">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => openLogsDialog(task.task_id)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => openLogsDialog(task.task_id)}
+                  >
                     查看日志
                   </Button>
-                  <Button size="sm" variant="destructive" disabled={!canCancel} onClick={() => void onCancelTask(task.task_id)}>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={!canCancel}
+                    onClick={() => void onCancelTask(task.task_id)}
+                  >
                     取消
                   </Button>
                 </div>
@@ -802,21 +909,27 @@ export function TasksPanel() {
                 <TableHead className="w-24">用时</TableHead>
                 <TableHead className="w-24">状态</TableHead>
                 <TableHead>汇总</TableHead>
+                <TableHead>保存目录</TableHead>
                 <TableHead className="w-44">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tasks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-slate">
+                  <TableCell
+                    colSpan={8}
+                    className="text-center text-sm text-slate"
+                  >
                     暂无任务
                   </TableCell>
                 </TableRow>
               ) : (
                 tasks.map((task) => {
-                  const canCancel = !["success", "failed", "cancelled"].includes(
-                    task.status,
-                  );
+                  const canCancel = ![
+                    "success",
+                    "failed",
+                    "cancelled",
+                  ].includes(task.status);
                   return (
                     <TableRow key={task.task_id}>
                       <TableCell className="font-mono text-[11px]">
@@ -836,6 +949,12 @@ export function TasksPanel() {
                       </TableCell>
                       <TableCell className="max-w-[22rem] truncate text-xs text-slate">
                         {formatTaskSummary(task)}
+                      </TableCell>
+                      <TableCell
+                        className="max-w-[10rem] truncate font-mono text-[11px] text-slate"
+                        title={task.download_path}
+                      >
+                        {task.download_path}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
@@ -874,7 +993,9 @@ export function TasksPanel() {
             <PaginationItem>
               <PaginationPrevious
                 href="#"
-                className={tasksPage <= 1 ? "pointer-events-none opacity-50" : undefined}
+                className={
+                  tasksPage <= 1 ? "pointer-events-none opacity-50" : undefined
+                }
                 onClick={(event) => {
                   event.preventDefault();
                   onPrevPage();
@@ -904,7 +1025,9 @@ export function TasksPanel() {
             <PaginationItem>
               <PaginationNext
                 href="#"
-                className={!tasksHasMore ? "pointer-events-none opacity-50" : undefined}
+                className={
+                  !tasksHasMore ? "pointer-events-none opacity-50" : undefined
+                }
                 onClick={(event) => {
                   event.preventDefault();
                   onNextPage();
@@ -925,26 +1048,45 @@ export function TasksPanel() {
           </DialogHeader>
 
           <div className="grid gap-2 rounded-lg border border-paper/60 p-3 text-xs text-slate sm:grid-cols-2">
-            <p>状态: {selectedTask ? formatTaskStatus(selectedTask.status) : "-"}</p>
-            <p>创建: {selectedTask ? formatTaskTime(selectedTask.created_at) : "-"}</p>
-            <p>开始: {selectedTask ? formatTaskTime(selectedTask.started_at) : "-"}</p>
-            <p>结束: {selectedTask ? formatTaskTime(selectedTask.ended_at) : "-"}</p>
+            <p>
+              状态: {selectedTask ? formatTaskStatus(selectedTask.status) : "-"}
+            </p>
+            <p>
+              创建:{" "}
+              {selectedTask ? formatTaskTime(selectedTask.created_at) : "-"}
+            </p>
+            <p>
+              开始:{" "}
+              {selectedTask ? formatTaskTime(selectedTask.started_at) : "-"}
+            </p>
+            <p>
+              结束: {selectedTask ? formatTaskTime(selectedTask.ended_at) : "-"}
+            </p>
             <p className="sm:col-span-2">
               汇总: {selectedTask ? formatTaskSummary(selectedTask) : "-"}
             </p>
           </div>
 
           <div className="surface-log mt-2 min-w-0 rounded-xl p-3 font-mono text-xs text-paper">
-            <div ref={logsPanelRef} onScroll={onLogsScroll} className="max-h-80 overflow-auto break-all">
+            <div
+              ref={logsPanelRef}
+              onScroll={onLogsScroll}
+              className="max-h-80 overflow-auto break-all"
+            >
               {selectedTaskLogs.length === 0 ? (
                 <p className="opacity-70">暂无日志</p>
               ) : (
                 selectedTaskLogs.map((log, idx) => (
                   <p
                     key={`${log.timestamp}-${idx}`}
-                    className={log.level === "error" ? "text-red-300" : "text-emerald-200"}
+                    className={
+                      log.level === "error"
+                        ? "text-red-300"
+                        : "text-emerald-200"
+                    }
                   >
-                    [{new Date(log.timestamp).toLocaleTimeString()}] {log.message}
+                    [{new Date(log.timestamp).toLocaleTimeString()}]{" "}
+                    {log.message}
                   </p>
                 ))
               )}
@@ -958,7 +1100,9 @@ export function TasksPanel() {
                 onClick={() => void onCancelTask(selectedTaskId)}
                 disabled={
                   !selectedTask ||
-                  ["success", "failed", "cancelled"].includes(selectedTask.status)
+                  ["success", "failed", "cancelled"].includes(
+                    selectedTask.status,
+                  )
                 }
               >
                 取消任务

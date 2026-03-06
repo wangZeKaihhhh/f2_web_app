@@ -324,21 +324,29 @@ def create_app() -> FastAPI:
     @app.post("/api/tasks", response_model=TaskSummary)
     async def post_task(payload: TaskCreateRequest) -> TaskSummary:
         settings = await settings_store.load()
+
+        # 优先使用任务级自定义目录，否则使用全局设置
+        raw_download_path = payload.download_path or settings.download_path
         try:
-            normalized_download_path = download_path_policy.ensure_writable(
-                settings.download_path
+            final_download_path = download_path_policy.ensure_writable(
+                raw_download_path
             )
-            if normalized_download_path != settings.download_path:
-                settings.download_path = normalized_download_path
-                await settings_store.save(settings)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        # 如果使用全局默认且路径被规范化，同步回设置
+        if not payload.download_path and final_download_path != settings.download_path:
+            settings.download_path = final_download_path
+            await settings_store.save(settings)
+
+        task_settings = settings.model_copy(deep=True)
+        task_settings.download_path = final_download_path
 
         user_list = payload.user_list
         if not user_list:
             raise HTTPException(status_code=400, detail="用户列表为空，请先配置后再启动")
 
-        return await task_manager.create_task(settings=settings, user_list=user_list)
+        return await task_manager.create_task(settings=task_settings, user_list=user_list)
 
     @app.get("/api/tasks", response_model=TaskListResponse)
     async def list_tasks(

@@ -62,6 +62,7 @@ export interface TaskSummary {
   ended_at: string | null;
   error: string | null;
   result: TaskResult | null;
+  download_path: string;
 }
 
 export interface TaskListResponse {
@@ -243,10 +244,13 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(payload)
     }),
-  createTask: (userList: UserTarget[]) =>
+  createTask: (userList: UserTarget[], downloadPath?: string) =>
     request<TaskSummary>('/api/tasks', {
       method: 'POST',
-      body: JSON.stringify({ user_list: userList })
+      body: JSON.stringify({
+        user_list: userList,
+        ...(downloadPath ? { download_path: downloadPath } : {}),
+      })
     }),
   listTasks: (params?: ListTasksParams) => {
     const search = new URLSearchParams();

@@ -341,6 +341,7 @@ class TaskManager:
             ended_at=record.ended_at,
             error=record.error,
             result=record.result,
+            download_path=record.settings.download_path,
         )
 
     @staticmethod

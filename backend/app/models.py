@@ -116,6 +116,7 @@ class DownloaderSettings(BaseModel):
 
 class TaskCreateRequest(BaseModel):
     user_list: list[UserTarget] | None = None
+    download_path: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -179,6 +180,7 @@ class TaskSummary(BaseModel):
     ended_at: datetime | None = None
     error: str | None = None
     result: TaskResult | None = None
+    download_path: str = ""
 
 
 class TaskListResponse(BaseModel):
