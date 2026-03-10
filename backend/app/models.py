@@ -14,6 +14,25 @@ ALLOWED_NAMING_PATTERN = re.compile(
 )
 
 
+def ensure_time_based_features_support_naming(
+    naming: str,
+    *,
+    update_exif: bool,
+    incremental_mode: bool,
+) -> None:
+    enabled_features: list[str] = []
+    if update_exif:
+        enabled_features.append("EXIF 更新时间")
+    if incremental_mode:
+        enabled_features.append("增量模式")
+
+    if enabled_features and "{create}" not in naming:
+        raise ValueError(
+            f"开启{'、'.join(enabled_features)}时，文件命名模板必须包含 {{create}}，"
+            "否则无法从文件名定位作品时间"
+        )
+
+
 def normalize_user_list(raw: Any) -> list[dict[str, str]]:
     normalized: list[dict[str, str]] = []
 

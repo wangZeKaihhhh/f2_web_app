@@ -89,6 +89,43 @@ DOWNLOAD_PATH=./.runtime/downloads \
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+## Docker 部署
+
+项目提供了完整的 Docker 版本（多阶段构建：前端打包 + 后端运行）。
+
+### 使用 Docker Compose（推荐）
+
+```bash
+docker compose up -d --build
+```
+
+启动后访问：
+
+- `http://localhost:8000`
+
+默认会创建名为 `f2_data` 的持久化卷，并在容器内使用：
+
+- 配置：`/data/config/settings.json`
+- 运行状态：`/data/state`
+- 下载目录：`/data/downloads`
+
+停止服务：
+
+```bash
+docker compose down
+```
+
+### 使用 Docker 命令
+
+```bash
+docker build -t f2-web-fpk:latest .
+docker run -d \
+  --name f2-web-fpk \
+  -p 8000:8000 \
+  -v f2_data:/data \
+  f2-web-fpk:latest
+```
+
 ## 打包 FPK
 
 ```bash

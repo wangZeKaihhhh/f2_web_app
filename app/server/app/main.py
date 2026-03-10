@@ -30,6 +30,7 @@ from app.models import (
     TaskListResponse,
     TaskDetail,
     TaskSummary,
+    ensure_time_based_features_support_naming,
 )
 
 
@@ -317,6 +318,11 @@ def create_app() -> FastAPI:
             normalized.download_path = download_path_policy.ensure_writable(
                 payload.download_path
             )
+            ensure_time_based_features_support_naming(
+                normalized.naming,
+                update_exif=normalized.update_exif,
+                incremental_mode=normalized.incremental_mode,
+            )
             return await settings_store.save(normalized)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -333,6 +339,12 @@ def create_app() -> FastAPI:
                 await settings_store.save(settings)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        ensure_time_based_features_support_naming(
+            settings.naming,
+            update_exif=settings.update_exif,
+            incremental_mode=settings.incremental_mode,
+        )
 
         user_list = payload.user_list
         if not user_list:

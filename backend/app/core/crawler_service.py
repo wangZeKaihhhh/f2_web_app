@@ -50,7 +50,13 @@ def _setup_exif_logger() -> logging.Logger:
 
 exif_logger = _setup_exif_logger()
 
-from app.models import DownloaderSettings, TaskResult, UserStat, UserTarget
+from app.models import (
+    DownloaderSettings,
+    TaskResult,
+    UserStat,
+    UserTarget,
+    ensure_time_based_features_support_naming,
+)
 
 EventEmitter = Callable[[str, str, dict[str, Any]], Awaitable[None]]
 CURRENT_LOG_STREAM_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar(
@@ -333,6 +339,13 @@ class DouyinCrawlerService:
         stats["time_groups"] = len(grouped_files)
         stats["skipped_files"] = stats["files_scanned"] - stats["matched_files"]
 
+        if stats["matched_files"] == 0:
+            exif_logger.warning(
+                "NO MATCH path=%s | aweme_items=%d | naming may not contain {create}",
+                user_path,
+                stats["aweme_items"],
+            )
+
         max_workers = min(8, os.cpu_count() or 4)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
@@ -360,39 +373,6 @@ class DouyinCrawlerService:
             exif_logger.info("FAILED FILES: %s", ", ".join(stats["failed_list"]))
 
         return stats
-
-    async def _exif_worker(
-        self,
-        queue: asyncio.Queue,
-        user_path: Path,
-        emit: EventEmitter,
-        nickname: str,
-    ) -> dict[str, Any]:
-        accumulated: dict[str, Any] = {
-            "aweme_items": 0,
-            "files_scanned": 0,
-            "matched_files": 0,
-            "updated_files": 0,
-            "failed_files": 0,
-            "skipped_files": 0,
-            "failed_list": [],
-            "time_groups": 0,
-            "elapsed_seconds": 0.0,
-        }
-        while True:
-            batch = await queue.get()
-            if batch is None:
-                break
-            batch_stats = await asyncio.to_thread(
-                self.process_downloaded_files, user_path, batch
-            )
-            for key in accumulated:
-                val = batch_stats.get(key, 0 if key != "failed_list" else [])
-                if key == "failed_list":
-                    accumulated[key].extend(val)
-                else:
-                    accumulated[key] += val
-        return accumulated
 
     async def _download_user_videos(
         self,
@@ -429,13 +409,7 @@ class DouyinCrawlerService:
             new_video_count = 0
             skipped_count = 0
 
-            exif_queue: asyncio.Queue | None = None
-            exif_task: asyncio.Task | None = None
-            if config.get("update_exif", False):
-                exif_queue = asyncio.Queue()
-                exif_task = asyncio.create_task(
-                    self._exif_worker(exif_queue, user_path, emit, user_nickname)
-                )
+            exif_aweme_data: list[dict[str, Any]] = []
 
             async for aweme_list in handler.fetch_user_post_videos(
                 sec_user_id=sec_user_id,
@@ -451,7 +425,10 @@ class DouyinCrawlerService:
                     continue
 
                 aweme_data_list = aweme_list._to_list()
+                if config.get("update_exif", False):
+                    exif_aweme_data.extend(list(aweme_data_list))
                 page_skipped_count = 0
+                stop_after_page = False
 
                 if incremental_mode:
                     filtered_list: list[dict[str, Any]] = []
@@ -483,7 +460,7 @@ class DouyinCrawlerService:
                                 "consecutive_existing_count": consecutive_existing_count,
                             },
                         )
-                        break
+                        stop_after_page = True
 
                     aweme_data_list = filtered_list
 
@@ -513,8 +490,6 @@ class DouyinCrawlerService:
                             )
 
                     new_video_count += len(aweme_data_list)
-                    if exif_queue is not None:
-                        await exif_queue.put(list(aweme_data_list))
                     await emit(
                         "item_downloaded",
                         f"用户 {user_nickname} 下载 {len(aweme_data_list)} 个作品",
@@ -539,9 +514,15 @@ class DouyinCrawlerService:
                     },
                 )
 
-            if exif_queue is not None and exif_task is not None:
-                await exif_queue.put(None)  # sentinel to stop worker
-                exif_stats = await exif_task
+                if stop_after_page:
+                    break
+
+            if config.get("update_exif", False):
+                exif_stats = await asyncio.to_thread(
+                    self.process_downloaded_files,
+                    user_path,
+                    exif_aweme_data,
+                )
                 failed_list = exif_stats.get("failed_list", [])
                 failed_detail = ""
                 if failed_list:
@@ -606,6 +587,12 @@ class DouyinCrawlerService:
 
         if not user_list:
             raise ValueError("用户列表为空，请至少配置一个用户链接或 sec_user_id")
+
+        ensure_time_based_features_support_naming(
+            settings.naming,
+            update_exif=settings.update_exif,
+            incremental_mode=settings.incremental_mode,
+        )
 
         Path(settings.download_path).mkdir(parents=True, exist_ok=True)
         self._state_dir.mkdir(parents=True, exist_ok=True)
