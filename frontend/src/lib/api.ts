@@ -43,6 +43,10 @@ export interface UserStat {
   new: number;
   skipped: number;
   status: string;
+  exif_scanned: number;
+  exif_updated: number;
+  exif_failed: number;
+  error: string | null;
 }
 
 export interface TaskResult {
@@ -51,6 +55,9 @@ export interface TaskResult {
   failed: number;
   total_new: number;
   total_skipped: number;
+  total_exif_scanned: number;
+  total_exif_updated: number;
+  total_exif_failed: number;
   users: UserStat[];
 }
 

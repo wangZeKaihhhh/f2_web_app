@@ -384,7 +384,7 @@ class DouyinCrawlerService:
         emit: EventEmitter,
         cancel_event: asyncio.Event,
         async_user_db_cls: Any,
-    ) -> tuple[bool, int, int, str]:
+    ) -> tuple[bool, int, int, str, dict[str, Any], str | None]:
         try:
             async with async_user_db_cls(str(users_db_path)) as audb:
                 user_profile = await handler.fetch_user_profile(sec_user_id)
@@ -408,6 +408,11 @@ class DouyinCrawlerService:
             video_count = 0
             new_video_count = 0
             skipped_count = 0
+            exif_stats: dict[str, Any] = {
+                "files_scanned": 0,
+                "updated_files": 0,
+                "failed_files": 0,
+            }
 
             exif_aweme_data: list[dict[str, Any]] = []
 
@@ -425,8 +430,6 @@ class DouyinCrawlerService:
                     continue
 
                 aweme_data_list = aweme_list._to_list()
-                if config.get("update_exif", False):
-                    exif_aweme_data.extend(list(aweme_data_list))
                 page_skipped_count = 0
                 stop_after_page = False
 
@@ -466,6 +469,8 @@ class DouyinCrawlerService:
 
                 if aweme_data_list:
                     await downloader.create_download_tasks(config, aweme_data_list, user_path)
+                    if config.get("update_exif", False):
+                        exif_aweme_data.extend(list(aweme_data_list))
 
                     # 合成 live 图为安卓 Motion Photo
                     if config.get("live_compose", False):
@@ -517,7 +522,7 @@ class DouyinCrawlerService:
                 if stop_after_page:
                     break
 
-            if config.get("update_exif", False):
+            if config.get("update_exif", False) and exif_aweme_data:
                 exif_stats = await asyncio.to_thread(
                     self.process_downloaded_files,
                     user_path,
@@ -545,6 +550,15 @@ class DouyinCrawlerService:
                     ),
                     {"nickname": user_nickname, "exif_stats": exif_stats},
                 )
+            elif config.get("update_exif", False):
+                await emit(
+                    "user_info",
+                    f"用户 {user_nickname} 本轮无新下载作品，跳过 EXIF 更新",
+                    {
+                        "nickname": user_nickname,
+                        "exif_stats": exif_stats,
+                    },
+                )
 
             await emit(
                 "user_completed",
@@ -556,7 +570,7 @@ class DouyinCrawlerService:
                     "success": True,
                 },
             )
-            return True, new_video_count, skipped_count, user_nickname
+            return True, new_video_count, skipped_count, user_nickname, exif_stats, None
         except Exception as exc:
             short_id = sec_user_id[:15]
             await emit(
@@ -564,7 +578,14 @@ class DouyinCrawlerService:
                 f"用户 {short_id} 下载失败: {exc}",
                 {"sec_user_id": sec_user_id, "error": str(exc)},
             )
-            return False, 0, 0, short_id
+            return (
+                False,
+                0,
+                0,
+                short_id,
+                {"files_scanned": 0, "updated_files": 0, "failed_files": 0},
+                str(exc),
+            )
 
     async def run(
         self,
@@ -636,6 +657,9 @@ class DouyinCrawlerService:
                 "failed": 0,
                 "total_new": 0,
                 "total_skipped": 0,
+                "total_exif_scanned": 0,
+                "total_exif_updated": 0,
+                "total_exif_failed": 0,
                 "users": [],
             }
 
@@ -650,7 +674,7 @@ class DouyinCrawlerService:
                         return
 
                     try:
-                        success, new_count, skipped_count, nickname = (
+                        success, new_count, skipped_count, nickname, exif_stats, error_message = (
                             await self._download_user_videos(
                                 handler,
                                 downloader,
@@ -669,11 +693,13 @@ class DouyinCrawlerService:
                             f"用户 {short_id} 下载失败: {exc}",
                             {"sec_user_id": user_id, "error": str(exc)},
                         )
-                        success, new_count, skipped_count, nickname = (
+                        success, new_count, skipped_count, nickname, exif_stats, error_message = (
                             False,
                             0,
                             0,
                             short_id,
+                            {"files_scanned": 0, "updated_files": 0, "failed_files": 0},
+                            str(exc),
                         )
 
                     user_stat = UserStat(
@@ -682,8 +708,15 @@ class DouyinCrawlerService:
                         new=new_count,
                         skipped=skipped_count,
                         status="✅" if success else "❌",
+                        exif_scanned=int(exif_stats.get("files_scanned", 0)),
+                        exif_updated=int(exif_stats.get("updated_files", 0)),
+                        exif_failed=int(exif_stats.get("failed_files", 0)),
+                        error=error_message,
                     )
                     stats["users"].append(user_stat)
+                    stats["total_exif_scanned"] += user_stat.exif_scanned
+                    stats["total_exif_updated"] += user_stat.exif_updated
+                    stats["total_exif_failed"] += user_stat.exif_failed
 
                     if success:
                         stats["success"] += 1
@@ -701,6 +734,9 @@ class DouyinCrawlerService:
                 failed=stats["failed"],
                 total_new=stats["total_new"],
                 total_skipped=stats["total_skipped"],
+                total_exif_scanned=stats["total_exif_scanned"],
+                total_exif_updated=stats["total_exif_updated"],
+                total_exif_failed=stats["total_exif_failed"],
                 users=stats["users"],
             )
         finally:

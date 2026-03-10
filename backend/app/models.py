@@ -180,6 +180,10 @@ class UserStat(BaseModel):
     new: int
     skipped: int
     status: str
+    exif_scanned: int = 0
+    exif_updated: int = 0
+    exif_failed: int = 0
+    error: str | None = None
 
 
 class TaskResult(BaseModel):
@@ -188,6 +192,9 @@ class TaskResult(BaseModel):
     failed: int = 0
     total_new: int = 0
     total_skipped: int = 0
+    total_exif_scanned: int = 0
+    total_exif_updated: int = 0
+    total_exif_failed: int = 0
     users: list[UserStat] = Field(default_factory=list)
 
 

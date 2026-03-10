@@ -212,25 +212,93 @@ class TaskManager:
                 stream_id=record.task_id,
             )
             record.result = result
+            record.ended_at = datetime.now(timezone.utc)
+            await self._emit_task_statistics(record, result)
 
             if record.cancel_event.is_set():
                 record.status = "cancelled"
-                await self._emit(record, "task_cancelled", "任务已取消", {})
+                await self._emit(
+                    record,
+                    "task_cancelled",
+                    self._build_terminal_message("任务已取消", result, record),
+                    {"result": result.model_dump(mode="json")},
+                )
             else:
                 record.status = "success"
                 await self._emit(
                     record,
                     "task_completed",
-                    "任务执行完成",
+                    self._build_terminal_message("任务执行完成", result, record),
                     {"result": result.model_dump(mode="json")},
                 )
         except Exception as exc:
             record.status = "failed"
             record.error = str(exc)
+            record.ended_at = datetime.now(timezone.utc)
             await self._emit(record, "task_failed", f"任务失败: {exc}", {"error": str(exc)})
         finally:
-            record.ended_at = datetime.now(timezone.utc)
+            if record.ended_at is None:
+                record.ended_at = datetime.now(timezone.utc)
             await self._persist_now(record)
+
+    @staticmethod
+    def _format_duration(started_at: datetime | None, ended_at: datetime | None) -> str:
+        if started_at is None or ended_at is None:
+            return "-"
+
+        seconds = max(0, int((ended_at - started_at).total_seconds()))
+        hours, remainder = divmod(seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        parts: list[str] = []
+        if hours:
+            parts.append(f"{hours}小时")
+        if minutes:
+            parts.append(f"{minutes}分钟")
+        if seconds or not parts:
+            parts.append(f"{seconds}秒")
+        return "".join(parts)
+
+    @classmethod
+    def _build_terminal_message(
+        cls,
+        prefix: str,
+        result: TaskResult,
+        record: TaskRecord,
+    ) -> str:
+        duration = cls._format_duration(record.started_at, record.ended_at)
+        return (
+            f"{prefix} | 本次任务统计: 用户总数 {result.total} / 成功 {result.success} / "
+            f"失败 {result.failed} / 新增 {result.total_new} / 跳过 {result.total_skipped} / "
+            f"EXIF 扫描 {result.total_exif_scanned} / 更新 {result.total_exif_updated} / "
+            f"EXIF失败 {result.total_exif_failed} / 用时 {duration}"
+        )
+
+    @staticmethod
+    def _build_user_summary_message(user: Any, exif_enabled: bool) -> str:
+        base = (
+            f"用户统计 | {user.status} {user.nickname} | 下载 {user.new} | 跳过 {user.skipped}"
+        )
+        if exif_enabled:
+            base += (
+                f" | EXIF 扫描 {user.exif_scanned} | 更新 {user.exif_updated} | "
+                f"失败 {user.exif_failed}"
+            )
+        else:
+            base += " | EXIF 关闭"
+
+        if user.error:
+            base += f" | 错误 {user.error}"
+        return base
+
+    async def _emit_task_statistics(self, record: TaskRecord, result: TaskResult) -> None:
+        for user in sorted(result.users, key=lambda item: item.nickname):
+            await self._emit(
+                record,
+                "task_user_summary",
+                self._build_user_summary_message(user, record.settings.update_exif),
+                {},
+            )
 
     async def _emit(
         self,
