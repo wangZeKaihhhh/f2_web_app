@@ -42,6 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { StatusBadge } from "../dashboard/PanelScaffold";
 
 type PaginationToken = number | "ellipsis-left" | "ellipsis-right";
 
@@ -101,6 +102,24 @@ function formatTaskStatus(status: TaskSummary["status"]): string {
       return "排队中";
     default:
       return status;
+  }
+}
+
+function taskStatusTone(
+  status: TaskSummary["status"],
+): "neutral" | "running" | "success" | "danger" {
+  switch (status) {
+    case "running":
+      return "running";
+    case "success":
+      return "success";
+    case "failed":
+      return "danger";
+    case "cancelled":
+      return "neutral";
+    case "pending":
+    default:
+      return "neutral";
   }
 }
 
@@ -226,6 +245,10 @@ export function TasksPanel() {
     pagedStartTaskCandidates.every(({ index }) =>
       selectedStartUserIndexes.includes(index),
     );
+  const runningTasks = tasks.filter((task) => task.status === "running").length;
+  const queuedTasks = tasks.filter((task) => task.status === "pending").length;
+  const successTasks = tasks.filter((task) => task.status === "success").length;
+  const failedTasks = tasks.filter((task) => task.status === "failed").length;
 
   useEffect(() => {
     emitDashboardMeta({ tasksTotal, tasksPage });
@@ -551,26 +574,35 @@ export function TasksPanel() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">
-          任务
-        </h2>
-        <div className="flex items-center gap-2">
-          <Button
-            disabled={starting}
-            onClick={() => void openStartTaskDialog()}
-          >
+    <section className="space-y-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="font-display text-2xl font-semibold tracking-[-0.05em] text-ink">
+            任务列表
+          </h2>
+          <span className="ops-chip">
+            <strong>{runningTasks}/{queuedTasks}</strong>
+            <span>运行/排队</span>
+          </span>
+          <span className="ops-chip">
+            <strong>{successTasks}/{failedTasks}</strong>
+            <span>成功/失败</span>
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="ops-chip">
+            <strong>{tasksPage}</strong>
+            <span>当前页</span>
+          </span>
+          <Button disabled={starting} onClick={() => void openStartTaskDialog()}>
             {starting ? "启动中..." : "开始任务"}
           </Button>
-          <p className="hidden font-mono text-xs text-slate sm:block">
-            每页 {DEFAULT_TASK_LIST_LIMIT} 条
-          </p>
         </div>
       </div>
 
       <Dialog open={startTaskDialogOpen} onOpenChange={closeStartTaskDialog}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>开始任务</DialogTitle>
             <DialogDescription>
@@ -580,7 +612,7 @@ export function TasksPanel() {
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate">保存目录</label>
+              <label className="subtle-label">保存目录</label>
               <Input
                 className="w-full font-mono text-sm"
                 value={startTaskDownloadPath}
@@ -588,13 +620,13 @@ export function TasksPanel() {
                 placeholder="使用默认下载目录"
               />
               {routeData.allowedDownloadRoots.length > 0 && (
-                <p className="text-[11px] text-slate">
+                <p className="field-note text-[11px]">
                   授权目录: {routeData.allowedDownloadRoots.join("、")}
                 </p>
               )}
             </div>
 
-            <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
+            <div className="data-shell space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   className="w-full sm:max-w-md"
@@ -633,7 +665,7 @@ export function TasksPanel() {
             </div>
 
             {/* 移动端卡片列表 */}
-            <div className="max-h-64 space-y-2 overflow-auto rounded-xl border border-paper/70 p-2 sm:hidden">
+            <div className="data-shell max-h-64 space-y-2 overflow-auto sm:hidden">
               {filteredStartTaskCandidates.length === 0 ? (
                 <p className="py-4 text-center text-xs text-slate">
                   未找到匹配用户
@@ -642,7 +674,7 @@ export function TasksPanel() {
                 pagedStartTaskCandidates.map(({ user, index }, rowIndex) => (
                   <label
                     key={`start-user-card-${index}`}
-                    className="flex items-start gap-2 rounded-lg border border-slate/15 bg-paper/40 p-2.5"
+                    className="surface-muted flex items-start gap-2 rounded-2xl p-3"
                   >
                     <input
                       type="checkbox"
@@ -671,8 +703,8 @@ export function TasksPanel() {
             </div>
 
             {/* 桌面端表格 */}
-            <div className="hidden max-h-80 overflow-auto rounded-xl border border-paper/70 p-2 sm:block">
-              <Table>
+            <div className="data-shell hidden max-h-80 overflow-y-auto sm:block">
+              <Table className="min-w-[760px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10">
@@ -833,210 +865,219 @@ export function TasksPanel() {
         </DialogContent>
       </Dialog>
 
-      {/* 移动端卡片视图 */}
-      <div className="space-y-3 sm:hidden">
-        {tasks.length === 0 ? (
-          <div className="surface-soft rounded-xl p-6 text-center text-sm text-slate">
-            暂无任务
-          </div>
-        ) : (
-          tasks.map((task) => {
-            const canCancel = !["success", "failed", "cancelled"].includes(
-              task.status,
-            );
-            return (
-              <div
-                key={task.task_id}
-                className="surface-soft rounded-xl p-3 space-y-2"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] text-slate truncate max-w-[60%]">
-                    {task.task_id}
-                  </span>
-                  <span className="text-xs font-medium">
-                    {formatTaskStatus(task.status)}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-1 text-[11px] text-slate">
-                  <span>开始: {formatTaskTime(task.started_at)}</span>
-                  <span>结束: {formatTaskTime(task.ended_at)}</span>
-                  <span>用时: {formatTaskDuration(task)}</span>
-                </div>
-                <p className="text-[11px] text-slate truncate">
-                  {formatTaskSummary(task)}
-                </p>
-                {task.download_path && (
-                  <p
-                    className="font-mono text-[11px] text-slate truncate"
-                    title={task.download_path}
-                  >
-                    目录: {task.download_path}
-                  </p>
-                )}
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => openLogsDialog(task.task_id)}
-                  >
-                    查看日志
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={!canCancel}
-                    onClick={() => void onCancelTask(task.task_id)}
-                  >
-                    取消
-                  </Button>
-                </div>
+      <section className="section-card shell-panel surface-soft">
+        <div className="space-y-4">
+          {/* 移动端卡片视图 */}
+          <div className="space-y-3 sm:hidden">
+            {tasks.length === 0 ? (
+              <div className="data-shell p-6 text-center text-sm text-slate">
+                暂无任务
               </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* 桌面端表格视图 */}
-      <div className="surface-soft hidden rounded-xl p-2 sm:block">
-        <div className="max-h-[30rem] overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-44">任务 ID</TableHead>
-                <TableHead className="w-44">开始时间</TableHead>
-                <TableHead className="w-44">结束时间</TableHead>
-                <TableHead className="w-24">用时</TableHead>
-                <TableHead className="w-24">状态</TableHead>
-                <TableHead>汇总</TableHead>
-                <TableHead>保存目录</TableHead>
-                <TableHead className="w-44">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tasks.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="text-center text-sm text-slate"
+            ) : (
+              tasks.map((task) => {
+                const canCancel = !["success", "failed", "cancelled"].includes(
+                  task.status,
+                );
+                return (
+                  <div
+                    key={task.task_id}
+                    className="shell-panel surface-muted rounded-[1.4rem] p-4 space-y-3"
                   >
-                    暂无任务
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tasks.map((task) => {
-                  const canCancel = ![
-                    "success",
-                    "failed",
-                    "cancelled",
-                  ].includes(task.status);
-                  return (
-                    <TableRow key={task.task_id}>
-                      <TableCell className="font-mono text-[11px]">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate font-mono text-[11px] text-slate">
                         {task.task_id}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {formatTaskTime(task.started_at)}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {formatTaskTime(task.ended_at)}
-                      </TableCell>
-                      <TableCell className="font-mono text-[11px]">
-                        {formatTaskDuration(task)}
-                      </TableCell>
-                      <TableCell className="text-xs">
+                      </span>
+                      <StatusBadge tone={taskStatusTone(task.status)}>
                         {formatTaskStatus(task.status)}
-                      </TableCell>
-                      <TableCell className="max-w-[22rem] truncate text-xs text-slate">
-                        {formatTaskSummary(task)}
-                      </TableCell>
-                      <TableCell
-                        className="max-w-[10rem] truncate font-mono text-[11px] text-slate"
+                      </StatusBadge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate">
+                      <span>开始: {formatTaskTime(task.started_at)}</span>
+                      <span>结束: {formatTaskTime(task.ended_at)}</span>
+                      <span>用时: {formatTaskDuration(task)}</span>
+                      <span>目录: {task.download_path ? "已设置" : "-"}</span>
+                    </div>
+                    <p className="text-[11px] leading-5 text-slate">
+                      {formatTaskSummary(task)}
+                    </p>
+                    {task.download_path && (
+                      <p
+                        className="truncate font-mono text-[11px] text-slate"
                         title={task.download_path}
                       >
                         {task.download_path}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openLogsDialog(task.task_id)}
-                          >
-                            查看日志
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={!canCancel}
-                            onClick={() => void onCancelTask(task.task_id)}
-                          >
-                            取消
-                          </Button>
-                        </div>
+                      </p>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => openLogsDialog(task.task_id)}
+                      >
+                        查看日志
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={!canCancel}
+                        onClick={() => void onCancelTask(task.task_id)}
+                      >
+                        取消
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* 桌面端表格视图 */}
+          <div className="data-shell hidden sm:block">
+            <div className="max-h-[30rem] overflow-y-auto">
+              <Table className="min-w-[1320px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-44">任务 ID</TableHead>
+                    <TableHead className="w-44">开始时间</TableHead>
+                    <TableHead className="w-44">结束时间</TableHead>
+                    <TableHead className="w-24">用时</TableHead>
+                    <TableHead className="w-28">状态</TableHead>
+                    <TableHead>汇总</TableHead>
+                    <TableHead>保存目录</TableHead>
+                    <TableHead className="table-sticky-right table-sticky-right-head w-44 min-w-[11rem]">
+                      操作
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tasks.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={8}
+                        className="py-10 text-center text-sm text-slate"
+                      >
+                        暂无任务
                       </TableCell>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                  ) : (
+                    tasks.map((task) => {
+                      const canCancel = ![
+                        "success",
+                        "failed",
+                        "cancelled",
+                      ].includes(task.status);
+                      return (
+                        <TableRow key={task.task_id}>
+                          <TableCell className="font-mono text-[11px]">
+                            {task.task_id}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {formatTaskTime(task.started_at)}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {formatTaskTime(task.ended_at)}
+                          </TableCell>
+                          <TableCell className="font-mono text-[11px]">
+                            {formatTaskDuration(task)}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge tone={taskStatusTone(task.status)}>
+                              {formatTaskStatus(task.status)}
+                            </StatusBadge>
+                          </TableCell>
+                          <TableCell className="text-xs text-slate">
+                            {formatTaskSummary(task)}
+                          </TableCell>
+                          <TableCell
+                            className="font-mono text-[11px] text-slate"
+                            title={task.download_path}
+                          >
+                            {task.download_path}
+                          </TableCell>
+                          <TableCell className="table-sticky-right w-44 min-w-[11rem]">
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openLogsDialog(task.task_id)}
+                              >
+                                查看日志
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={!canCancel}
+                                onClick={() => void onCancelTask(task.task_id)}
+                              >
+                                取消
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
 
-      <div className="surface-muted flex flex-wrap items-center justify-between gap-2 rounded-xl p-3">
-        <p className="font-mono text-xs text-slate">
-          第 {tasksPage} 页 / 共 {tasksTotalPages} 页
-        </p>
-        <Pagination className="mx-0 w-auto justify-end">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                className={
-                  tasksPage <= 1 ? "pointer-events-none opacity-50" : undefined
-                }
-                onClick={(event) => {
-                  event.preventDefault();
-                  onPrevPage();
-                }}
-              />
-            </PaginationItem>
-            {taskPageTokens.map((token, index) =>
-              typeof token === "number" ? (
-                <PaginationItem key={`task-page-${token}`}>
-                  <PaginationLink
+          <div className="data-shell flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-xs text-slate">
+              第 {tasksPage} 页 / 共 {tasksTotalPages} 页
+            </p>
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
                     href="#"
-                    isActive={token === tasksPage}
+                    className={
+                      tasksPage <= 1 ? "pointer-events-none opacity-50" : undefined
+                    }
                     onClick={(event) => {
                       event.preventDefault();
-                      onTasksPageChange(token);
+                      onPrevPage();
                     }}
-                  >
-                    {token}
-                  </PaginationLink>
+                  />
                 </PaginationItem>
-              ) : (
-                <PaginationItem key={`task-ellipsis-${token}-${index}`}>
-                  <PaginationEllipsis />
+                {taskPageTokens.map((token, index) =>
+                  typeof token === "number" ? (
+                    <PaginationItem key={`task-page-${token}`}>
+                      <PaginationLink
+                        href="#"
+                        isActive={token === tasksPage}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onTasksPageChange(token);
+                        }}
+                      >
+                        {token}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={`task-ellipsis-${token}-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    className={
+                      !tasksHasMore ? "pointer-events-none opacity-50" : undefined
+                    }
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onNextPage();
+                    }}
+                  />
                 </PaginationItem>
-              ),
-            )}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                className={
-                  !tasksHasMore ? "pointer-events-none opacity-50" : undefined
-                }
-                onClick={(event) => {
-                  event.preventDefault();
-                  onNextPage();
-                }}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        </div>
+      </section>
 
       <Dialog open={logsDialogOpen} onOpenChange={closeLogsDialog}>
         <DialogContent className="sm:max-w-4xl">
@@ -1047,9 +1088,16 @@ export function TasksPanel() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-2 rounded-lg border border-paper/60 p-3 text-xs text-slate sm:grid-cols-2">
+          <div className="data-shell grid gap-3 text-xs text-slate sm:grid-cols-2">
             <p>
-              状态: {selectedTask ? formatTaskStatus(selectedTask.status) : "-"}
+              状态:{" "}
+              {selectedTask ? (
+                <StatusBadge tone={taskStatusTone(selectedTask.status)}>
+                  {formatTaskStatus(selectedTask.status)}
+                </StatusBadge>
+              ) : (
+                "-"
+              )}
             </p>
             <p>
               创建:{" "}
@@ -1067,7 +1115,7 @@ export function TasksPanel() {
             </p>
           </div>
 
-          <div className="surface-log mt-2 min-w-0 rounded-xl p-3 font-mono text-xs text-paper">
+          <div className="surface-log mt-2 min-w-0 rounded-[1.4rem] p-3 font-mono text-xs text-paper">
             <div
               ref={logsPanelRef}
               onScroll={onLogsScroll}

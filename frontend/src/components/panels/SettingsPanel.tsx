@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { Textarea } from "../ui/textarea";
+import { SectionCard } from "../dashboard/PanelScaffold";
 
 type NumberSettingKey =
   | "max_tasks"
@@ -38,6 +39,8 @@ type NumberSettingKey =
   | "timeout"
   | "max_retries"
   | "max_connections";
+
+type SettingsView = "users" | "access" | "advanced";
 
 const dashboardRouteApi = getRouteApi("/$panel");
 const NAMING_TEMPLATE_PATTERN =
@@ -108,11 +111,23 @@ export function SettingsPanel() {
   const [selectedUserIndexes, setSelectedUserIndexes] = useState<number[]>([]);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [batchInput, setBatchInput] = useState("");
+  const [activeView, setActiveView] = useState<SettingsView>("users");
 
   const allowedDownloadRoots = routeData.allowedDownloadRoots;
   const allRowsSelected =
     settings.user_list.length > 0 &&
     selectedUserIndexes.length === settings.user_list.length;
+  const contentOptionCount = [
+    settings.music,
+    settings.cover,
+    settings.desc,
+  ].filter(Boolean).length;
+  const automationOptionCount = [
+    settings.incremental_mode,
+    settings.update_exif,
+    settings.live_compose,
+    settings.folderize,
+  ].filter(Boolean).length;
 
   useEffect(() => {
     emitDashboardMeta({ userCount: settings.user_list.length });
@@ -277,30 +292,94 @@ export function SettingsPanel() {
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">
-            设置
+    <section className="space-y-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="font-display text-2xl font-semibold tracking-[-0.05em] text-ink">
+            采集设置
           </h2>
-          <div className="font-mono text-xs text-slate">Cookie 与用户列表持久化</div>
+          <span className="ops-chip">
+            <strong>{settings.user_list.length}</strong>
+            <span>用户</span>
+          </span>
+          <span className="ops-chip">
+            <strong>
+              {activeView === "users"
+                ? "用户池"
+                : activeView === "access"
+                  ? "鉴权与目录"
+                  : "高级参数"}
+            </strong>
+            <span>当前焦点</span>
+          </span>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="ops-chip">
+            <strong>{settings.douyin_cookie ? "已配置" : "未配置"}</strong>
+            <span>Cookie</span>
+          </span>
           <Button disabled={saving} onClick={onSaveSettings}>
             {saving ? "保存中..." : "保存设置"}
           </Button>
         </div>
       </div>
 
-      <div className="mt-4 space-y-5">
-        <div className="surface-soft rounded-xl p-4">
+      <div className="surface-soft rounded-[1.6rem] p-2">
+        <div className="grid gap-2 md:grid-cols-3">
+          <button
+            type="button"
+            className={`rounded-[1.2rem] px-4 py-3 text-left transition ${
+              activeView === "users"
+                ? "bg-pine/12 text-ink shadow-[inset_0_0_0_1px_rgb(var(--glow-rgb)_/_0.24)]"
+                : "bg-transparent text-slate hover:bg-background/40"
+            }`}
+            onClick={() => setActiveView("users")}
+          >
+            <p className="subtle-label">用户池</p>
+          </button>
+          <button
+            type="button"
+            className={`rounded-[1.2rem] px-4 py-3 text-left transition ${
+              activeView === "access"
+                ? "bg-pine/12 text-ink shadow-[inset_0_0_0_1px_rgb(var(--glow-rgb)_/_0.24)]"
+                : "bg-transparent text-slate hover:bg-background/40"
+            }`}
+            onClick={() => setActiveView("access")}
+          >
+            <p className="subtle-label">鉴权与目录</p>
+          </button>
+          <button
+            type="button"
+            className={`rounded-[1.2rem] px-4 py-3 text-left transition ${
+              activeView === "advanced"
+                ? "bg-pine/12 text-ink shadow-[inset_0_0_0_1px_rgb(var(--glow-rgb)_/_0.24)]"
+                : "bg-transparent text-slate hover:bg-background/40"
+            }`}
+            onClick={() => setActiveView("advanced")}
+          >
+            <p className="subtle-label">高级参数</p>
+          </button>
+        </div>
+      </div>
+
+      {activeView === "users" ? (
+        <SectionCard
+          title="目标用户池"
+          actions={
+            <>
+              <span className="ops-chip">
+                <strong>{settings.user_list.length}</strong>
+                <span>总数</span>
+              </span>
+              <span className="ops-chip">
+                <strong>{selectedUserIndexes.length}</strong>
+                <span>已选中</span>
+              </span>
+            </>
+          }
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="font-display text-lg font-semibold text-ink">目标用户</h3>
-              <p className="mt-1 text-xs text-slate">
-                用户总数 {settings.user_list.length}，已选中 {selectedUserIndexes.length}。
-              </p>
-            </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={addUser}>
                 新增一行
@@ -345,8 +424,7 @@ export function SettingsPanel() {
             </div>
           </div>
 
-          {/* 移动端卡片视图 */}
-          <div className="surface-muted mt-3 rounded-xl p-2 sm:hidden">
+          <div className="data-shell mt-4 sm:hidden">
             <div className="flex items-center gap-2 px-1 pb-2">
               <input
                 type="checkbox"
@@ -357,7 +435,7 @@ export function SettingsPanel() {
             </div>
             <div className="max-h-72 space-y-2 overflow-auto">
               {settings.user_list.map((item, index) => (
-                <div key={`user-card-${index}`} className="rounded-lg border border-slate/15 bg-paper/40 p-3 space-y-2">
+                <div key={`user-card-${index}`} className="surface-muted space-y-2 rounded-2xl p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <input
@@ -387,10 +465,9 @@ export function SettingsPanel() {
             </div>
           </div>
 
-          {/* 桌面端表格视图 */}
-          <div className="surface-muted mt-3 hidden rounded-xl p-2 sm:block">
-            <div className="max-h-72 overflow-auto pr-1">
-              <Table>
+          <div className="data-shell mt-4 hidden sm:block">
+            <div className="max-h-72 overflow-y-auto pr-1">
+              <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10">
@@ -405,7 +482,9 @@ export function SettingsPanel() {
                     <TableHead className="w-12">#</TableHead>
                     <TableHead className="w-40">名称</TableHead>
                     <TableHead>URL / sec_user_id</TableHead>
-                    <TableHead className="w-20">操作</TableHead>
+                    <TableHead className="table-sticky-right table-sticky-right-head w-20 min-w-[6rem]">
+                      操作
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -442,7 +521,7 @@ export function SettingsPanel() {
                           placeholder="https://www.douyin.com/user/... 或 sec_user_id"
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="table-sticky-right w-20 min-w-[6rem]">
                         <Button
                           variant="destructive"
                           size="sm"
@@ -457,262 +536,276 @@ export function SettingsPanel() {
               </Table>
             </div>
           </div>
-        </div>
+        </SectionCard>
+      ) : null}
 
-        <div className="surface-soft rounded-xl p-4">
-          <h3 className="font-display text-lg font-semibold text-ink">认证凭据</h3>
-          <p className="mt-1 text-xs text-slate">
-            Cookie 仅用于请求鉴权，请保持最新。
-          </p>
-          <label className="mt-3 block text-xs text-slate">
-            抖音 Cookie
-            <Textarea
-              className="mt-1 h-32 font-mono text-xs"
-              value={settings.douyin_cookie}
-              onChange={(event) =>
-                updateSetting("douyin_cookie", event.target.value)
-              }
-              placeholder="粘贴完整 Cookie"
-            />
-          </label>
-        </div>
-
-        <div className="surface-soft rounded-xl p-4">
-          <h3 className="font-display text-lg font-semibold text-ink">下载内容</h3>
-          <p className="mt-1 text-xs text-slate">控制是否下载附加资源。</p>
-          <div className="surface-muted mt-3 space-y-2 rounded-lg p-3 text-xs text-slate">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={settings.music}
-                onChange={(event) => updateSetting("music", event.target.checked)}
+      {activeView === "access" ? (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+          <SectionCard title="认证凭据">
+            <label className="block text-xs text-slate">
+              抖音 Cookie
+              <Textarea
+                className="mt-2 h-40 font-mono text-xs"
+                value={settings.douyin_cookie}
+                onChange={(event) =>
+                  updateSetting("douyin_cookie", event.target.value)
+                }
+                placeholder="粘贴完整 Cookie"
               />
-              下载音乐
             </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={settings.cover}
-                onChange={(event) => updateSetting("cover", event.target.checked)}
+          </SectionCard>
+
+          <SectionCard title="存储目录">
+            <label className="block text-xs text-slate">
+              下载目录
+              <Input
+                type="text"
+                className="mt-2 font-mono text-xs"
+                value={settings.download_path}
+                onChange={(event) =>
+                  updateSetting("download_path", event.target.value)
+                }
               />
-              下载封面
             </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={settings.desc}
-                onChange={(event) => updateSetting("desc", event.target.checked)}
-              />
-              生成描述文本
-            </label>
-          </div>
-        </div>
-
-        <details className="surface-soft rounded-xl p-4">
-          <summary className="cursor-pointer select-none text-sm font-semibold text-ink">
-            高级参数（并发、重试、增量、命名）
-          </summary>
-
-          <div className="mt-4 space-y-4">
-            <div>
-              <p className="text-xs font-semibold text-ink">并发与网络</p>
-              <div className="mt-2 grid max-w-3xl gap-3 sm:grid-cols-2 md:grid-cols-3">
-                <label className="block text-xs text-slate">
-                  用户并发
-                  <Input
-                    type="number"
-                    className="mt-1"
-                    value={settings.max_tasks}
-                    min={1}
-                    onChange={(event) =>
-                      updateNumberSetting("max_tasks", event.target.value)
-                    }
-                  />
-                </label>
-                <label className="block text-xs text-slate">
-                  每页作品数
-                  <Input
-                    type="number"
-                    className="mt-1"
-                    value={settings.page_counts}
-                    min={1}
-                    onChange={(event) =>
-                      updateNumberSetting("page_counts", event.target.value)
-                    }
-                  />
-                </label>
-                <label className="block text-xs text-slate">
-                  超时（秒）
-                  <Input
-                    type="number"
-                    className="mt-1"
-                    value={settings.timeout}
-                    min={1}
-                    onChange={(event) =>
-                      updateNumberSetting("timeout", event.target.value)
-                    }
-                  />
-                </label>
-                <label className="block text-xs text-slate">
-                  最大重试次数
-                  <Input
-                    type="number"
-                    className="mt-1"
-                    value={settings.max_retries}
-                    min={0}
-                    onChange={(event) =>
-                      updateNumberSetting("max_retries", event.target.value, 0)
-                    }
-                  />
-                </label>
-                <label className="block text-xs text-slate">
-                  最大连接数
-                  <Input
-                    type="number"
-                    className="mt-1"
-                    value={settings.max_connections}
-                    min={1}
-                    onChange={(event) =>
-                      updateNumberSetting("max_connections", event.target.value)
-                    }
-                  />
-                </label>
-                <label className="block text-xs text-slate">
-                  HTTP 代理
-                  <Input
-                    type="text"
-                    className="mt-1 font-mono text-xs"
-                    value={settings.proxy_http}
-                    onChange={(event) =>
-                      updateSetting("proxy_http", event.target.value)
-                    }
-                    placeholder="http://127.0.0.1:7890"
-                  />
-                </label>
-                <label className="block text-xs text-slate">
-                  HTTPS 代理
-                  <Input
-                    type="text"
-                    className="mt-1 font-mono text-xs"
-                    value={settings.proxy_https}
-                    onChange={(event) =>
-                      updateSetting("proxy_https", event.target.value)
-                    }
-                    placeholder="http://127.0.0.1:7890"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-ink">增量与写入行为</p>
-              <div className="mt-2 grid max-w-3xl gap-3 sm:grid-cols-2">
-                <label className="block text-xs text-slate">
-                  增量阈值
-                  <Input
-                    type="number"
-                    className="mt-1"
-                    value={settings.incremental_threshold}
-                    min={1}
-                    onChange={(event) =>
-                      updateNumberSetting(
-                        "incremental_threshold",
-                        event.target.value,
-                      )
-                    }
-                  />
-                </label>
-              </div>
-              <div className="surface-muted mt-2 space-y-2 rounded-lg p-3 text-xs text-slate">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={settings.incremental_mode}
-                    onChange={(event) =>
-                      updateSetting("incremental_mode", event.target.checked)
-                    }
-                  />
-                  增量模式
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={settings.update_exif}
-                    onChange={(event) =>
-                      updateSetting("update_exif", event.target.checked)
-                    }
-                  />
-                  EXIF 更新时间
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={settings.live_compose}
-                    onChange={(event) =>
-                      updateSetting("live_compose", event.target.checked)
-                    }
-                  />
-                  实况合成 Motion Photo
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={settings.folderize}
-                    onChange={(event) =>
-                      updateSetting("folderize", event.target.checked)
-                    }
-                  />
-                  作品单独文件夹
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-ink">命名规则</p>
-              <label className="mt-2 block text-xs text-slate">
-                文件命名模板（naming）
-                <Input
-                  type="text"
-                  className="mt-1 font-mono text-xs"
-                  value={settings.naming}
-                  onChange={(event) =>
-                    updateSetting("naming", event.target.value)
-                  }
-                  placeholder="{create}_{desc}"
-                />
-              </label>
-              <p className="mt-1 font-mono text-[11px] text-slate">
-                支持变量: {"{nickname}"} {"{create}"} {"{aweme_id}"} {"{desc}"}{" "}
-                {"{uid}"}，分隔符仅支持{" _ "}和{" - "}
+            {allowedDownloadRoots.length > 0 && (
+              <p className="mt-3 font-mono text-[11px] leading-5 text-slate">
+                授权目录参考: {allowedDownloadRoots.join("、")}
+                （仅供参考，实际以可写性校验结果为准）
               </p>
+            )}
+          </SectionCard>
+
+          <SectionCard title="下载内容" className="xl:col-span-2">
+            <div className="surface-muted grid gap-3 rounded-2xl p-4 text-sm text-slate md:grid-cols-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={settings.music}
+                  onChange={(event) => updateSetting("music", event.target.checked)}
+                />
+                下载音乐
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={settings.cover}
+                  onChange={(event) => updateSetting("cover", event.target.checked)}
+                />
+                下载封面
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={settings.desc}
+                  onChange={(event) => updateSetting("desc", event.target.checked)}
+                />
+                生成描述文本
+              </label>
+            </div>
+          </SectionCard>
+        </div>
+      ) : null}
+
+      {activeView === "advanced" ? (
+        <SectionCard title="高级参数">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+            <div className="space-y-6">
+              <div>
+                <p className="text-xs font-semibold text-ink">并发与网络</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block text-xs text-slate">
+                    用户并发
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      value={settings.max_tasks}
+                      min={1}
+                      onChange={(event) =>
+                        updateNumberSetting("max_tasks", event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs text-slate">
+                    每页作品数
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      value={settings.page_counts}
+                      min={1}
+                      onChange={(event) =>
+                        updateNumberSetting("page_counts", event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs text-slate">
+                    超时（秒）
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      value={settings.timeout}
+                      min={1}
+                      onChange={(event) =>
+                        updateNumberSetting("timeout", event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs text-slate">
+                    最大重试次数
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      value={settings.max_retries}
+                      min={0}
+                      onChange={(event) =>
+                        updateNumberSetting("max_retries", event.target.value, 0)
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs text-slate">
+                    最大连接数
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      value={settings.max_connections}
+                      min={1}
+                      onChange={(event) =>
+                        updateNumberSetting("max_connections", event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs text-slate">
+                    增量阈值
+                    <Input
+                      type="number"
+                      className="mt-1"
+                      value={settings.incremental_threshold}
+                      min={1}
+                      onChange={(event) =>
+                        updateNumberSetting(
+                          "incremental_threshold",
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs text-slate sm:col-span-2">
+                    HTTP 代理
+                    <Input
+                      type="text"
+                      className="mt-1 font-mono text-xs"
+                      value={settings.proxy_http}
+                      onChange={(event) =>
+                        updateSetting("proxy_http", event.target.value)
+                      }
+                      placeholder="http://127.0.0.1:7890"
+                    />
+                  </label>
+                  <label className="block text-xs text-slate sm:col-span-2">
+                    HTTPS 代理
+                    <Input
+                      type="text"
+                      className="mt-1 font-mono text-xs"
+                      value={settings.proxy_https}
+                      onChange={(event) =>
+                        updateSetting("proxy_https", event.target.value)
+                      }
+                      placeholder="http://127.0.0.1:7890"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-ink">命名规则</p>
+                <label className="mt-3 block text-xs text-slate">
+                  文件命名模板（naming）
+                  <Input
+                    type="text"
+                    className="mt-1 font-mono text-xs"
+                    value={settings.naming}
+                    onChange={(event) =>
+                      updateSetting("naming", event.target.value)
+                    }
+                    placeholder="{create}_{desc}"
+                  />
+                </label>
+                <p className="mt-2 font-mono text-[11px] leading-5 text-slate">
+                  支持变量: {"{nickname}"} {"{create}"} {"{aweme_id}"} {"{desc}"}{" "}
+                  {"{uid}"}，分隔符仅支持{" _ "}和{" - "}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="surface-muted rounded-2xl p-4">
+                <p className="subtle-label">自动化增强</p>
+                <div className="mt-4 space-y-3 text-sm text-slate">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={settings.incremental_mode}
+                      onChange={(event) =>
+                        updateSetting("incremental_mode", event.target.checked)
+                      }
+                    />
+                    增量模式
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={settings.update_exif}
+                      onChange={(event) =>
+                        updateSetting("update_exif", event.target.checked)
+                      }
+                    />
+                    EXIF 更新时间
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={settings.live_compose}
+                      onChange={(event) =>
+                        updateSetting("live_compose", event.target.checked)
+                      }
+                    />
+                    实况合成 Motion Photo
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={settings.folderize}
+                      onChange={(event) =>
+                        updateSetting("folderize", event.target.checked)
+                      }
+                    />
+                    作品单独文件夹
+                  </label>
+                </div>
+              </div>
+
+              <div className="surface-muted rounded-2xl p-4 text-sm text-slate">
+                <p className="subtle-label">当前摘要</p>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>下载内容项</span>
+                    <strong className="font-mono text-ink">{contentOptionCount}/3</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>自动化增强</span>
+                    <strong className="font-mono text-ink">{automationOptionCount}/4</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>并发组合</span>
+                    <strong className="font-mono text-ink">
+                      {settings.max_tasks} x {settings.max_connections}
+                    </strong>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </details>
-
-        <div className="surface-soft rounded-xl p-4">
-          <h3 className="font-display text-lg font-semibold text-ink">存储目录</h3>
-          <p className="mt-1 text-xs text-slate">
-            下载文件将写入该目录。保存设置和启动任务前会校验目录是否可写。
-          </p>
-          <label className="mt-3 block text-xs text-slate">
-            下载目录
-            <Input
-              type="text"
-              className="mt-1 font-mono text-xs"
-              value={settings.download_path}
-              onChange={(event) =>
-                updateSetting("download_path", event.target.value)
-              }
-            />
-          </label>
-          {allowedDownloadRoots.length > 0 && (
-            <p className="mt-2 font-mono text-[11px] text-slate">
-              授权目录参考: {allowedDownloadRoots.join("、")}
-              （仅供参考，实际以可写性校验结果为准）
-            </p>
-          )}
-        </div>
-      </div>
+        </SectionCard>
+      ) : null}
     </section>
   );
 }

@@ -4,9 +4,10 @@ import { RouterProvider } from '@tanstack/react-router';
 import './index.css';
 import { router } from './router';
 import { Toaster } from './components/ui/sonner';
+import { getInitialThemeMode, persistThemeMode } from './lib/theme';
 
 if (typeof document !== 'undefined') {
-  document.documentElement.setAttribute('data-theme', 'apple-light');
+  persistThemeMode(getInitialThemeMode());
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -12,29 +12,30 @@ export default function App() {
   const activePanel = dashboardRouteApi.useParams().panel as SidebarPanel;
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden">
-      <header className="z-40 shrink-0 border-b border-slate/25 bg-paper/85 px-3 py-3 backdrop-blur-xl md:px-6">
-        <DashboardTopBar />
-      </header>
-
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+    <div className="dashboard-frame">
+      <div className="dashboard-layout">
         <DashboardSidebar />
+        <div className="dashboard-main">
+          <header className="shell-panel surface-card rounded-[1.6rem] p-3 md:p-4">
+            <DashboardTopBar />
+          </header>
 
-        <main className="relative min-h-0 flex-1 overflow-y-auto bg-paper/35">
-          <div className="relative min-h-full px-4 pb-8 pt-4 md:px-8 md:pb-10 md:pt-6">
-            <div className={activePanel === "settings" ? "block" : "hidden"}>
-              <SettingsPanel />
-            </div>
+          <main className="dashboard-main-inner">
+            <div className="w-full space-y-6">
+              <div className={activePanel === "settings" ? "block" : "hidden"}>
+                <SettingsPanel />
+              </div>
 
-            <div className={activePanel === "tasks" ? "block" : "hidden"}>
-              <TasksPanel />
-            </div>
+              <div className={activePanel === "tasks" ? "block" : "hidden"}>
+                <TasksPanel />
+              </div>
 
-            <div className={activePanel === "schedules" ? "block" : "hidden"}>
-              <SchedulesPanel />
+              <div className={activePanel === "schedules" ? "block" : "hidden"}>
+                <SchedulesPanel />
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );

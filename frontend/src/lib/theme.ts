@@ -1,13 +1,13 @@
 export type ThemeMode = 'apple-light' | 'apple-dark';
 
 export const THEME_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
-  { value: 'apple-light', label: '浅色' },
-  { value: 'apple-dark', label: '深色' }
+  { value: 'apple-dark', label: '深色' },
+  { value: 'apple-light', label: '浅色' }
 ];
 
 export function getInitialThemeMode(): ThemeMode {
   if (typeof window === 'undefined') {
-    return 'apple-light';
+    return 'apple-dark';
   }
 
   try {
@@ -17,13 +17,13 @@ export function getInitialThemeMode(): ThemeMode {
     }
 
     if (stored === 'glass-ocean' || stored === 'glass-minimal' || stored === 'glass-sunset') {
-      return 'apple-light';
+      return 'apple-dark';
     }
 
     const validModes = new Set<ThemeMode>(['apple-light', 'apple-dark']);
-    return validModes.has(stored as ThemeMode) ? (stored as ThemeMode) : 'apple-light';
+    return validModes.has(stored as ThemeMode) ? (stored as ThemeMode) : 'apple-dark';
   } catch {
-    return 'apple-light';
+    return 'apple-dark';
   }
 }
 

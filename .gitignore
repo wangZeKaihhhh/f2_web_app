@@ -24,3 +24,5 @@ app/server/wheels/
 .DS_Store
 
 docs/
+.codex
+.claude

@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import { StatusBadge } from "../dashboard/PanelScaffold";
 
 const dashboardRouteApi = getRouteApi("/$panel");
 const USER_PAGE_SIZE = 10;
@@ -114,6 +115,10 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
+function scheduleStateTone(enabled: boolean): "success" | "neutral" {
+  return enabled ? "success" : "neutral";
+}
+
 export function SchedulesPanel() {
   const routeData = dashboardRouteApi.useLoaderData();
   const navigate = useNavigate();
@@ -139,6 +144,9 @@ export function SchedulesPanel() {
   const [deleting, setDeleting] = useState(false);
 
   const effectiveCronExpr = formIsCustomCron ? formCustomCron : formCronExpr;
+  const enabledCount = schedules.filter((schedule) => schedule.enabled).length;
+  const pausedCount = schedules.length - enabledCount;
+  const scheduledNextRuns = schedules.filter((schedule) => schedule.next_run_at).length;
 
   // user list filtering & pagination
   const searchText = formUserSearch.trim().toLowerCase();
@@ -402,149 +410,166 @@ export function SchedulesPanel() {
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">
-          计划
-        </h2>
-        <Button onClick={() => void openCreateDialog()}>新建计划</Button>
-      </div>
+    <section className="space-y-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="font-display text-2xl font-semibold tracking-[-0.05em] text-ink">
+            计划列表
+          </h2>
+          <span className="ops-chip">
+            <strong>{enabledCount}/{pausedCount}</strong>
+            <span>启用/暂停</span>
+          </span>
+          <span className="ops-chip">
+            <strong>{scheduledNextRuns}</strong>
+            <span>已排程</span>
+          </span>
+        </div>
 
-      {/* 移动端卡片视图 */}
-      <div className="space-y-3 sm:hidden">
-        {schedules.length === 0 ? (
-          <div className="surface-soft rounded-xl p-6 text-center text-sm text-slate">
-            暂无计划任务
-          </div>
-        ) : (
-          schedules.map((schedule) => (
-            <div key={schedule.schedule_id} className="surface-soft rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{schedule.name}</span>
-                <span
-                  className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    schedule.enabled
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {schedule.enabled ? "启用" : "禁用"}
-                </span>
-              </div>
-              <div className="space-y-1 text-[11px] text-slate">
-                <p>执行周期: <span className="font-mono">{describeCron(schedule.cron_expr)}</span></p>
-                <p>上次执行: {formatTime(schedule.last_run_at)}</p>
-                <p>下次执行: {formatTime(schedule.next_run_at)}</p>
-              </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button size="sm" variant="outline" onClick={() => void openEditDialog(schedule)}>
-                  编辑
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void onToggle(schedule.schedule_id)}>
-                  {schedule.enabled ? "禁用" : "启用"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void onRunNow(schedule.schedule_id)}>
-                  立即执行
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => openDeleteDialog(schedule.schedule_id)}>
-                  删除
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* 桌面端表格视图 */}
-      <div className="surface-soft hidden rounded-xl p-2 sm:block">
-        <div className="max-h-[30rem] overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-44">名称</TableHead>
-                <TableHead className="w-44">执行周期</TableHead>
-                <TableHead className="w-20">状态</TableHead>
-                <TableHead className="w-44">上次执行</TableHead>
-                <TableHead className="w-44">下次执行</TableHead>
-                <TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {schedules.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-slate">
-                    暂无计划任务
-                  </TableCell>
-                </TableRow>
-              ) : (
-                schedules.map((schedule) => (
-                  <TableRow key={schedule.schedule_id}>
-                    <TableCell className="text-xs font-medium">
-                      {schedule.name}
-                    </TableCell>
-                    <TableCell className="font-mono text-[11px]">
-                      {describeCron(schedule.cron_expr)}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          schedule.enabled
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {schedule.enabled ? "启用" : "禁用"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {formatTime(schedule.last_run_at)}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {formatTime(schedule.next_run_at)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void openEditDialog(schedule)}
-                        >
-                          编辑
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void onToggle(schedule.schedule_id)}
-                        >
-                          {schedule.enabled ? "禁用" : "启用"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void onRunNow(schedule.schedule_id)}
-                        >
-                          立即执行
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => openDeleteDialog(schedule.schedule_id)}
-                        >
-                          删除
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="ops-chip">
+            <strong>{schedules.length}</strong>
+            <span>计划</span>
+          </span>
+          <Button onClick={() => void openCreateDialog()}>新建计划</Button>
         </div>
       </div>
 
+      <section className="section-card shell-panel surface-soft">
+        <div className="space-y-4">
+          {/* 移动端卡片视图 */}
+          <div className="space-y-3 sm:hidden">
+            {schedules.length === 0 ? (
+              <div className="data-shell p-6 text-center text-sm text-slate">
+                暂无计划任务
+              </div>
+            ) : (
+              schedules.map((schedule) => (
+                <div
+                  key={schedule.schedule_id}
+                  className="shell-panel surface-muted rounded-[1.4rem] p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-ink">{schedule.name}</span>
+                    <StatusBadge tone={scheduleStateTone(schedule.enabled)}>
+                      {schedule.enabled ? "启用" : "禁用"}
+                    </StatusBadge>
+                  </div>
+                  <div className="space-y-1.5 text-[11px] leading-5 text-slate">
+                    <p>
+                      执行周期:{" "}
+                      <span className="font-mono">{describeCron(schedule.cron_expr)}</span>
+                    </p>
+                    <p>上次执行: {formatTime(schedule.last_run_at)}</p>
+                    <p>下次执行: {formatTime(schedule.next_run_at)}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button size="sm" variant="outline" onClick={() => void openEditDialog(schedule)}>
+                      编辑
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void onToggle(schedule.schedule_id)}>
+                      {schedule.enabled ? "禁用" : "启用"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void onRunNow(schedule.schedule_id)}>
+                      立即执行
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => openDeleteDialog(schedule.schedule_id)}>
+                      删除
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* 桌面端表格视图 */}
+          <div className="data-shell hidden sm:block">
+            <div className="max-h-[30rem] overflow-y-auto">
+              <Table className="min-w-[1080px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-44">名称</TableHead>
+                    <TableHead className="w-44">执行周期</TableHead>
+                    <TableHead className="w-28">状态</TableHead>
+                    <TableHead className="w-44">上次执行</TableHead>
+                    <TableHead className="w-44">下次执行</TableHead>
+                    <TableHead className="table-sticky-right table-sticky-right-head min-w-[20rem]">
+                      操作
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {schedules.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-10 text-center text-sm text-slate">
+                        暂无计划任务
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    schedules.map((schedule) => (
+                      <TableRow key={schedule.schedule_id}>
+                        <TableCell className="text-xs font-medium">
+                          {schedule.name}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px]">
+                          {describeCron(schedule.cron_expr)}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge tone={scheduleStateTone(schedule.enabled)}>
+                            {schedule.enabled ? "启用" : "禁用"}
+                          </StatusBadge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {formatTime(schedule.last_run_at)}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {formatTime(schedule.next_run_at)}
+                        </TableCell>
+                        <TableCell className="table-sticky-right min-w-[20rem]">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void openEditDialog(schedule)}
+                            >
+                              编辑
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void onToggle(schedule.schedule_id)}
+                            >
+                              {schedule.enabled ? "禁用" : "启用"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void onRunNow(schedule.schedule_id)}
+                            >
+                              立即执行
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => openDeleteDialog(schedule.schedule_id)}
+                            >
+                              删除
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Create / Edit Dialog */}
       <Dialog open={formDialogOpen} onOpenChange={closeFormDialog}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>{editingScheduleId ? "编辑计划" : "新建计划"}</DialogTitle>
             <DialogDescription>
@@ -565,8 +590,8 @@ export function SchedulesPanel() {
             </label>
 
             {/* Cron expression */}
-            <div>
-              <p className="text-xs text-slate">执行周期</p>
+            <div className="data-shell">
+              <p className="subtle-label">执行周期</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {CRON_PRESETS.map((preset) => (
                   <Button
@@ -599,7 +624,7 @@ export function SchedulesPanel() {
                     onChange={(e) => setFormCustomCron(e.target.value)}
                     placeholder="Cron 表达式，例如: 30 3 * * 0,6"
                   />
-                  <div className="surface-muted rounded-lg p-3 text-[11px] leading-relaxed text-slate">
+                  <div className="surface-muted rounded-2xl p-3 text-[11px] leading-relaxed text-slate">
                     <p className="font-semibold text-ink">Cron 表达式格式: 分 时 日 月 周</p>
                     <div className="mt-1.5 hidden font-mono sm:block">
                       <p>┌─── 分钟 (0-59)</p>
@@ -627,8 +652,8 @@ export function SchedulesPanel() {
             </div>
 
             {/* User selection */}
-            <div>
-              <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
+            <div className="space-y-3">
+              <div className="data-shell space-y-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:space-y-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     className="w-full sm:max-w-md"
@@ -666,14 +691,14 @@ export function SchedulesPanel() {
               </div>
 
               {/* 移动端卡片列表 */}
-              <div className="mt-2 max-h-56 space-y-2 overflow-auto rounded-xl border border-paper/70 p-2 sm:hidden">
+              <div className="data-shell mt-2 max-h-56 space-y-2 overflow-auto sm:hidden">
                 {filteredUsers.length === 0 ? (
                   <p className="py-4 text-center text-xs text-slate">未找到匹配用户</p>
                 ) : (
                   pagedUsers.map(({ user, index }, rowIndex) => (
                     <label
                       key={`sched-user-card-${index}`}
-                      className="flex items-start gap-2 rounded-lg border border-slate/15 bg-paper/40 p-2.5"
+                      className="surface-muted flex items-start gap-2 rounded-2xl p-3"
                     >
                       <input
                         type="checkbox"
@@ -694,8 +719,8 @@ export function SchedulesPanel() {
               </div>
 
               {/* 桌面端表格 */}
-              <div className="mt-2 hidden max-h-56 overflow-auto rounded-xl border border-paper/70 p-2 sm:block">
-                <Table>
+              <div className="data-shell mt-2 hidden max-h-56 overflow-y-auto sm:block">
+                <Table className="min-w-[760px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10">
