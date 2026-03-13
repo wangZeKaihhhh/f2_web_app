@@ -185,11 +185,13 @@ class DouyinCrawlerService:
                 "-CreateDate=" + exif_time,
                 "-ModifyDate=" + exif_time,
                 "-DateTimeOriginal=" + exif_time,
+                "-CreationDate=" + exif_time,
                 "-TrackCreateDate=" + exif_time,
                 "-TrackModifyDate=" + exif_time,
                 "-MediaCreateDate=" + exif_time,
                 "-MediaModifyDate=" + exif_time,
                 str(file_path),
+            ]
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             if result.returncode != 0:
@@ -223,6 +225,7 @@ class DouyinCrawlerService:
             "-CreateDate=" + exif_time,
             "-ModifyDate=" + exif_time,
             "-DateTimeOriginal=" + exif_time,
+            "-CreationDate=" + exif_time,
             "-TrackCreateDate=" + exif_time,
             "-TrackModifyDate=" + exif_time,
             "-MediaCreateDate=" + exif_time,
