@@ -1,121 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1e3a6e;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1B4F9B;stop-opacity:1" />
-    </linearGradient>
-    <radialGradient id="gearGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" style="stop-color:#2a6fc4;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1B4F9B;stop-opacity:1" />
-    </radialGradient>
     <clipPath id="roundedSquare">
-      <rect x="0" y="0" width="256" height="256" rx="52" ry="52" />
+      <rect x="0" y="0" width="256" height="256" rx="56" ry="56" />
     </clipPath>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.25" />
-    </filter>
   </defs>
 
-  <!-- Background -->
-  <rect x="0" y="0" width="256" height="256" rx="52" ry="52" fill="url(#bgGrad)" />
-  <rect x="0" y="0" width="256" height="128" rx="52" ry="52"
-        fill="white" fill-opacity="0.04" clip-path="url(#roundedSquare)" />
+  <rect x="0" y="0" width="256" height="256" rx="56" ry="56" fill="#1a1a1a" />
+  <rect x="0" y="0" width="256" height="256" rx="56" ry="56" fill="none" stroke="#2a2a2a" stroke-width="2" />
 
-  <!-- Spider Arms -->
-  <line x1="148" y1="128" x2="206" y2="128"
-        stroke="#4a8fd4" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="212" cy="128" r="8" fill="#E8722A" />
-  <circle cx="212" cy="128" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <line x1="143" y1="143" x2="188" y2="188"
-        stroke="#3a7fc0" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="193" cy="193" r="8" fill="#E8722A" />
-  <circle cx="193" cy="193" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <line x1="128" y1="148" x2="128" y2="206"
-        stroke="#4a8fd4" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="128" cy="212" r="8" fill="#E8722A" />
-  <circle cx="128" cy="212" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <line x1="113" y1="143" x2="68" y2="188"
-        stroke="#3a7fc0" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="63" cy="193" r="8" fill="#E8722A" />
-  <circle cx="63" cy="193" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <line x1="108" y1="128" x2="50" y2="128"
-        stroke="#4a8fd4" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="44" cy="128" r="8" fill="#E8722A" />
-  <circle cx="44" cy="128" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <line x1="113" y1="113" x2="68" y2="68"
-        stroke="#3a7fc0" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="63" cy="63" r="8" fill="#E8722A" />
-  <circle cx="63" cy="63" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <line x1="128" y1="108" x2="128" y2="50"
-        stroke="#4a8fd4" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="128" cy="44" r="8" fill="#E8722A" />
-  <circle cx="128" cy="44" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <line x1="143" y1="113" x2="188" y2="68"
-        stroke="#3a7fc0" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-  <circle cx="193" cy="63" r="8" fill="#E8722A" />
-  <circle cx="193" cy="63" r="4" fill="#fff" fill-opacity="0.6" />
-
-  <!-- Decorative Arcs -->
-  <path d="M 158 72 A 68 68 0 0 1 184 98"
-        stroke="#E8722A" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/>
-  <path d="M 184 158 A 68 68 0 0 1 158 184"
-        stroke="#E8722A" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/>
-  <path d="M 98 184 A 68 68 0 0 1 72 158"
-        stroke="#E8722A" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/>
-  <path d="M 72 98 A 68 68 0 0 1 98 72"
-        stroke="#E8722A" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.7"/>
-
-  <!-- Gear -->
-  <circle cx="128" cy="128" r="44" fill="white" opacity="0.97" />
-  <g transform="translate(128,128)">
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(0)" />
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(45)" />
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(90)" />
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(135)" />
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(180)" />
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(225)" />
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(270)" />
-    <rect x="-7" y="-52" width="14" height="16" rx="3" fill="white" opacity="0.97" transform="rotate(315)" />
+  <g fill="#ffffff">
+    <path d="M 50 70 L 110 70 L 110 90 L 75 90 L 75 115 L 105 115 L 105 135 L 75 135 L 75 186 L 50 186 Z" />
+    <rect x="120" y="100" width="16" height="56" rx="2" />
+    <path d="M 145 70 L 206 70 L 206 95 Q 206 110 191 110 L 170 110 L 206 161 L 206 186 L 145 186 L 145 161 L 181 161 L 145 110 L 145 95 Q 145 70 145 70 Z" />
   </g>
 
-  <circle cx="128" cy="128" r="44" fill="#deeaf8" />
-
-  <!-- Grid inside gear -->
-  <clipPath id="gearClip">
-    <circle cx="128" cy="128" r="42" />
-  </clipPath>
-  <g clip-path="url(#gearClip)" stroke="#1B4F9B" stroke-width="1.2" opacity="0.3">
-    <line x1="107" y1="105" x2="107" y2="151" />
-    <line x1="128" y1="105" x2="128" y2="151" />
-    <line x1="149" y1="105" x2="149" y2="151" />
-    <line x1="105" y1="107" x2="151" y2="107" />
-    <line x1="105" y1="128" x2="151" y2="128" />
-    <line x1="105" y1="149" x2="151" y2="149" />
-  </g>
-
-  <circle cx="128" cy="128" r="44" fill="none" stroke="#1B4F9B" stroke-width="3" opacity="0.6"/>
-
-  <!-- Magnifying Glass -->
-  <circle cx="123" cy="123" r="20" fill="none" stroke="#1B4F9B" stroke-width="5.5" />
-  <circle cx="123" cy="123" r="17" fill="#1B4F9B" fill-opacity="0.12" />
-  <circle cx="117" cy="117" r="4" fill="white" fill-opacity="0.55" />
-
-  <line x1="137" y1="137" x2="151" y2="151"
-        stroke="#E8722A" stroke-width="7" stroke-linecap="round" />
-  <circle cx="153" cy="153" r="4" fill="#E8722A" opacity="0.8"/>
-
-  <!-- Gear Centre -->
-  <circle cx="128" cy="128" r="8" fill="#1B4F9B" opacity="0.2"/>
-  <circle cx="128" cy="128" r="5" fill="#1B4F9B" opacity="0.5"/>
-
-  <!-- Gloss -->
-  <ellipse cx="128" cy="85" rx="65" ry="30"
-           fill="white" fill-opacity="0.06" clip-path="url(#roundedSquare)" />
+  <rect x="50" y="200" width="156" height="3" rx="1.5" fill="#ffffff" opacity="0.3" />
 </svg>

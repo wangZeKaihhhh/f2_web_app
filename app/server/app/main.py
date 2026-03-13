@@ -89,7 +89,7 @@ def _get_client_identity(request: Request) -> str:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="F2", version="0.2.0")
+    app = FastAPI(title="F2", version="0.2.3")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
