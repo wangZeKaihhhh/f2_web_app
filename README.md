@@ -77,6 +77,8 @@
 ./scripts/dev_backend.sh
 ```
 
+默认监听 `http://localhost:8001`，也支持通过 `BACKEND_PORT` 覆盖端口。
+
 也可手动启动：
 
 ```bash
@@ -86,7 +88,7 @@ APP_ENV=development \
 SETTINGS_FILE=./.runtime/config/settings.development.json \
 STATE_DIR=./.runtime/state \
 DOWNLOAD_PATH=./.runtime/downloads \
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 ## Docker 部署

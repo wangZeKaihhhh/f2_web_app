@@ -17,7 +17,8 @@ export APP_ENV=development
 export SETTINGS_FILE="$BACKEND_DIR/.runtime/config/settings.development.json"
 export STATE_DIR="$BACKEND_DIR/.runtime/state"
 export DOWNLOAD_PATH="$BACKEND_DIR/.runtime/downloads"
+BACKEND_PORT="${BACKEND_PORT:-8001}"
 
 mkdir -p "$BACKEND_DIR/.runtime/config" "$BACKEND_DIR/.runtime/state" "$BACKEND_DIR/.runtime/downloads"
 
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port "$BACKEND_PORT"

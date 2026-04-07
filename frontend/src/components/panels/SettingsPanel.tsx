@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -45,6 +45,16 @@ type SettingsView = "users" | "access" | "advanced";
 const dashboardRouteApi = getRouteApi("/$panel");
 const NAMING_TEMPLATE_PATTERN =
   /^\{(?:nickname|create|aweme_id|desc|uid)\}(?:[_-]\{(?:nickname|create|aweme_id|desc|uid)\})*$/;
+const SETTINGS_EXPORT_SCHEMA = "f2-web-settings" as const;
+const SETTINGS_EXPORT_VERSION = 1;
+const SETTINGS_FILE_ACCEPT = "application/json,.json";
+
+type SettingsExportFile = {
+  schema: typeof SETTINGS_EXPORT_SCHEMA;
+  version: number;
+  exported_at: string;
+  settings: DownloaderSettings;
+};
 
 function normalizeUserList(userList: UserTarget[]): UserTarget[] {
   return userList
@@ -99,21 +109,90 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
+function normalizeSettingsState(settings: DownloaderSettings): DownloaderSettings {
+  return {
+    ...settings,
+    mode: "post",
+    user_list: settings.user_list.length > 0 ? settings.user_list : [{ name: "", url: "" }],
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasImportableSettings(value: Record<string, unknown>): boolean {
+  return ["user_list", "download_path", "douyin_cookie", "naming"].some(
+    (key) => key in value,
+  );
+}
+
+function extractImportPayload(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new Error("配置文件格式无效");
+  }
+
+  if (value.schema !== SETTINGS_EXPORT_SCHEMA) {
+    throw new Error("请选择通过“导出配置”生成的 JSON 文件");
+  }
+
+  const settings = value.settings;
+  if (!isRecord(settings) || !hasImportableSettings(settings)) {
+    throw new Error("配置文件缺少可导入的设置内容");
+  }
+
+  return settings;
+}
+
+function buildExportPayload(settings: DownloaderSettings): SettingsExportFile {
+  return {
+    schema: SETTINGS_EXPORT_SCHEMA,
+    version: SETTINGS_EXPORT_VERSION,
+    exported_at: new Date().toISOString(),
+    settings: {
+      ...settings,
+      mode: "post",
+      naming: settings.naming.trim(),
+      user_list: normalizeUserList(settings.user_list),
+    },
+  };
+}
+
+function buildExportFileName() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `f2-settings-${timestamp}.json`;
+}
+
+function downloadFile(filename: string, content: string) {
+  const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+  const objectUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
 export function SettingsPanel() {
   const routeData = dashboardRouteApi.useLoaderData();
   const navigate = useNavigate();
 
-  const [settings, setSettings] = useState<DownloaderSettings>(() => ({
-    ...routeData.settings,
-    mode: "post",
-  }));
+  const [settings, setSettings] = useState<DownloaderSettings>(() =>
+    normalizeSettingsState(routeData.settings),
+  );
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [selectedUserIndexes, setSelectedUserIndexes] = useState<number[]>([]);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [batchInput, setBatchInput] = useState("");
   const [activeView, setActiveView] = useState<SettingsView>("users");
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const allowedDownloadRoots = routeData.allowedDownloadRoots;
+  const busy = saving || importing || exporting;
   const allRowsSelected =
     settings.user_list.length > 0 &&
     selectedUserIndexes.length === settings.user_list.length;
@@ -146,6 +225,17 @@ export function SettingsPanel() {
     return true;
   }
 
+  function applySavedSettings(saved: DownloaderSettings, message: string) {
+    const nextSettings = normalizeSettingsState(saved);
+    setSettings(nextSettings);
+    setSelectedUserIndexes([]);
+    emitDashboardMeta({
+      message,
+      userCount: nextSettings.user_list.length,
+    });
+    toast.success(message);
+  }
+
   async function onSaveSettings() {
     setSaving(true);
     emitDashboardMeta({ message: "" });
@@ -167,18 +257,7 @@ export function SettingsPanel() {
       };
 
       const saved = await api.saveSettings(payload);
-      setSettings({
-        ...saved,
-        mode: "post",
-        user_list:
-          saved.user_list.length > 0 ? saved.user_list : [{ name: "", url: "" }],
-      });
-      setSelectedUserIndexes([]);
-      emitDashboardMeta({
-        message: "设置已保存",
-        userCount: saved.user_list.length,
-      });
-      toast.success("设置已保存");
+      applySavedSettings(saved, "设置已保存");
     } catch (error) {
       if (!handleUnauthorized(error)) {
         const text = `保存失败: ${errorMessage(error)}`;
@@ -291,8 +370,82 @@ export function SettingsPanel() {
     });
   }
 
+  function openImportPicker() {
+    importFileInputRef.current?.click();
+  }
+
+  async function onImportSettings(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setImporting(true);
+    emitDashboardMeta({ message: "" });
+
+    try {
+      const rawText = await file.text();
+      let parsed: unknown;
+
+      try {
+        parsed = JSON.parse(rawText) as unknown;
+      } catch {
+        throw new Error("配置文件不是有效的 JSON");
+      }
+
+      const payload = extractImportPayload(parsed);
+      const saved = await api.importSettings(payload);
+      applySavedSettings(saved, "配置已导入并保存");
+    } catch (error) {
+      if (!handleUnauthorized(error)) {
+        const text = `导入失败: ${errorMessage(error)}`;
+        emitDashboardMeta({ message: text });
+        toast.error(text);
+      }
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function onExportSettings() {
+    setExporting(true);
+    emitDashboardMeta({ message: "" });
+
+    try {
+      const latestSettings = await api.getSettings();
+      const payload = buildExportPayload(latestSettings);
+      downloadFile(
+        buildExportFileName(),
+        JSON.stringify(payload, null, 2),
+      );
+      emitDashboardMeta({
+        message: "配置已导出，请妥善保管文件",
+        userCount: latestSettings.user_list.length,
+      });
+      toast.success("配置已导出，请妥善保管文件");
+    } catch (error) {
+      if (!handleUnauthorized(error)) {
+        const text = `导出失败: ${errorMessage(error)}`;
+        emitDashboardMeta({ message: text });
+        toast.error(text);
+      }
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <section className="space-y-6">
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept={SETTINGS_FILE_ACCEPT}
+        className="hidden"
+        onChange={onImportSettings}
+      />
+
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="font-display text-2xl font-semibold tracking-[-0.05em] text-ink">
@@ -315,11 +468,17 @@ export function SettingsPanel() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" disabled={busy} onClick={openImportPicker}>
+            {importing ? "导入中..." : "导入配置"}
+          </Button>
+          <Button variant="outline" disabled={busy} onClick={() => void onExportSettings()}>
+            {exporting ? "导出中..." : "导出配置"}
+          </Button>
           <span className="ops-chip">
             <strong>{settings.douyin_cookie ? "已配置" : "未配置"}</strong>
             <span>Cookie</span>
           </span>
-          <Button disabled={saving} onClick={onSaveSettings}>
+          <Button disabled={busy} onClick={onSaveSettings}>
             {saving ? "保存中..." : "保存设置"}
           </Button>
         </div>

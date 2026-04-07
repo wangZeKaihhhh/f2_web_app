@@ -246,6 +246,11 @@ export const api = {
       body: JSON.stringify({ password })
     }),
   getSettings: () => request<DownloaderSettings>('/api/settings'),
+  importSettings: (payload: unknown) =>
+    request<DownloaderSettings>('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    }),
   saveSettings: (payload: DownloaderSettings) =>
     request<DownloaderSettings>('/api/settings', {
       method: 'PUT',
